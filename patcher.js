@@ -19,7 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
         for (const versionKey in FW_VERSIONS) {
             const versionInfo = FW_VERSIONS[versionKey];
             const option = document.createElement('option');
-            option.value = versionInfo.file; // Use filename as value for fetching
+            option.value = "Firmware/" + versionInfo.file; // Use filename as value for fetching
             option.textContent = versionInfo.name || `Version ${versionKey}`;
             fwSelect.appendChild(option);
         }
@@ -299,5 +299,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
 }); // End DOMContentLoaded
+
 
 
