@@ -114,7 +114,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         try {
-            const response = await fetch(selectedFile);
+            const response = await fetch("Firmware/" + selectedFile);
             if (!response.ok) {
                 // More specific error for common GitHub Pages 404
                 if(response.status === 404 && window.location.hostname.endsWith('github.io')){
@@ -299,3 +299,4 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
 }); // End DOMContentLoaded
+
