@@ -7,19 +7,19 @@ const PATCH_MANIFEST = {
     
     "InvPatch": {
         name: "Inventory Patch",
-        description: "Adds new functions for the inventory system.",
+        description: "Adds items menu to the inventory tab.",
         file: "Patches/InvPatch.js"
     },
 
     "IconMod": {
         name: "Icon Mod",
-        description: "Replaces the default icons with an extended set.",
+        description: "Removes cog and holotape icons.",
         file: "Patches/IconMod.js"
     },
 
     "PerksPatch": {
         name: "Perks System",
-        description: "Inserts the new perks system.",
+        description: "Adds perks system.",
         file: "Patches/PerksPatch.js"
     }
 
