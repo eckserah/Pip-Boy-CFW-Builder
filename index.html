@@ -33,10 +33,12 @@
         <h1>FW.js Modular Patcher</h1>
 
         <div class="step">
-            <h3>Step 1: Upload your base FW.js file</h3>
-            <input type="file" id="file-input" accept=".js">
+            <h3>Step 1: Select your base FW version</h3>
+            <select id="fw-select">
+                <option value="">-- Select Version --</option>
+                </select>
+            <p id="fw-loading-status" style="display: none; color: #888; margin-top: 5px;">Loading file...</p>
         </div>
-
         <div class="step">
             <h3>Step 2: Select patches to apply</h3>
             <div id="patch-list">
@@ -46,17 +48,15 @@
 
         <div class="step">
             <h3>Step 3: Generate Patched File</h3>
-            <button id="patch-button" disabled>1. Upload FW.js</button>
-        </div>
+            <button id="patch-button" disabled>1. Select FW Version</button>
+             </div>
 
         <a id="download-link" href="#" download="FW.js_patched.js">Download Patched File</a>
     </div>
 
-    <script>
-        window.Patches = {};
-    </script>
-    
+    <script> window.Patches = {}; </script>
     <script src="Patches/patch_manifest.js"></script>
+    <script src="Firmware/fw_manifest.js"></script>
     <script src="patcher.js"></script>
 
 </body>
