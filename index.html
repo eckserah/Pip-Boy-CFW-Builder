@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FW.js Modular Patcher</title>
+    <style>
+        body { font-family: sans-serif; background: #f0f0f0; padding: 20px; }
+        .container { max-width: 700px; margin: 0 auto; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        h1 { text-align: center; }
+        .step { margin-bottom: 20px; }
+        #patch-list { border: 1px solid #ddd; padding: 10px; border-radius: 4px; max-height: 300px; overflow-y: auto; }
+        .patch-item { margin-bottom: 10px; }
+        .patch-item label { font-weight: bold; display: block; }
+        .patch-item p { font-size: 0.9em; margin: 4px 0 0 20px; color: #555; }
+        button { font-size: 1.2em; padding: 10px 20px; cursor: pointer; display: block; width: 100%; }
+        #download-link {
+            display: none; /* Hidden by default */
+            padding: 15px;
+            text-align: center;
+            background: #28a745;
+            color: white;
+            text-decoration: none;
+            font-size: 1.2em;
+            border-radius: 4px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>FW.js Modular Patcher</h1>
+
+        <div class="step">
+            <h3>Step 1: Upload your base FW.js file</h3>
+            <input type="file" id="file-input" accept=".js">
+        </div>
+
+        <div class="step">
+            <h3>Step 2: Select patches to apply</h3>
+            <div id="patch-list">
+                <p>Loading patches...</p>
+            </div>
+        </div>
+
+        <div class="step">
+            <h3>Step 3: Generate Patched File</h3>
+            <button id="patch-button" disabled>1. Upload FW.js</button>
+        </div>
+
+        <a id="download-link" href="#" download="FW.js_patched.js">Download Patched File</a>
+    </div>
+
+    <script>
+        window.Patches = {};
+    </script>
+    
+    <script src="Patches/patch_manifest.js"></script>
+    <script src="patcher.js"></script>
+
+</body>
+</html>
