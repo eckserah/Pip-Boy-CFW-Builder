@@ -175,8 +175,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         console.log("Starting patching process...");
 
-        // Keep track of applied insertion markers to prevent duplicates
-        const appliedInsertionMarkers = new Set();
+        // [REMOVED] Duplicate marker tracking set was here
 
         try {
             selectedPatches.forEach(checkbox => {
@@ -209,25 +208,18 @@ document.addEventListener('DOMContentLoaded', () => {
                     for (const markerName in patchData.insert) {
                         const fullMarker = `//${patchKey}Insert_${markerName}`; // Construct the full marker string
 
-                        // Check if this specific marker has already been used in this patching run
-                        if (appliedInsertionMarkers.has(fullMarker)) {
-                             console.warn(`    - SKIPPING insertion at marker "${fullMarker}" - already applied by another patch.`);
-                             continue; // Skip this insertion
-                        }
+                        // [REMOVED] Duplicate marker check was here
 
                         console.log(`    - Inserting at marker: ${markerName}`);
                         const insertionCode = patchData.insert[markerName];
                         const originalLength = patchedContent.length; // Store length before insertion
                         patchedContent = applyInsertion(patchedContent, patchKey, markerName, insertionCode);
 
-                        // If applyInsertion returned modified content (didn't just warn and return original)
-                        // and the marker now exists AFTER the inserted code (basic check)
-                        if (patchedContent !== null && patchedContent.length > originalLength && patchedContent.includes(`\n${insertionCode}\n${fullMarker}`)) {
-                             appliedInsertionMarkers.add(fullMarker); // Mark this marker as used
+                        // [REPLACED] The broken check was here.
+                        // applyInsertion handles logging a warning if the marker isn't found.
+                        // We just check if the content actually changed.
+                        if (patchedContent.length > originalLength) {
                              console.log(`    - Successfully inserted at ${fullMarker}`);
-                        } else if (patchedContent === null) {
-                             // applyInsertion itself should have warned if marker not found
-                             console.warn(`    - Insertion failed or marker ${fullMarker} not found.`);
                         }
                     }
                 } else {

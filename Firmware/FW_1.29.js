@@ -1965,7 +1965,6 @@ let submenuInvAttach = () =>
 };
 //InvPatchInsert_ItemsFunction
 //PerksPatchInsert_PerksFunction
-//PerksPatchInsert_MenuClasses
 let submenuExtTerminal = () =>
 {
 	E.setUSBHID(
