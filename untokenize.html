@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Preformatted JS Display</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+            padding: 24px;
+            background: #f6f8fa;
+            color: #111;
+        }
+        .controls {
+            margin-bottom: 12px;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        button {
+            padding: 8px 12px;
+            border-radius: 6px;
+            border: 1px solid #bbb;
+            background: #fff;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        button:active { transform: translateY(1px); }
+        pre {
+            background: #0b1220;
+            color: #d6deeb;
+            padding: 16px;
+            border-radius: 8px;
+            overflow: auto;
+            max-height: 60vh;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            margin: 0;
+            white-space: pre;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", "Courier New", monospace;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+        .hidden { display: none; }
+        .muted { color: #666; font-size: 13px; }
+    </style>
+</head>
+<body>
+    <h1>JavaScript Preview</h1>
+
+    <div class="controls">
+        <button id="uploadBtn" aria-pressed="false">Upload Code</button>
+        <button id="copyBtn" disabled>Copy</button>
+        <button id="saveBtn" disabled>Save...</button>
+        <div class="muted" id="status" aria-live="polite"></div>
+    </div>
+
+    <pre><code id="codeBlock" class="language-javascript" tabindex="0" aria-label="Preformatted JavaScript code"></code></pre>
+	<script src="libs/acorn/acorn.js"></script>
+    <script src="libs/acorn/acorn_loose.js"></script>
+    <script src="libs/acorn/walk.js"></script>
+    <script src="libs/acorn/signal.js"></script>
+    <script src="libs/acorn/tern.js"></script>
+    <script src="libs/acorn/def.js"></script>
+    <script src="libs/acorn/comment.js"></script>
+    <script src="libs/acorn/infer.js"></script>
+    <script src="libs/acorn/doc_comment.js"></script>
+
+    <script src="EspruinoTools/espruino.js"></script>
+	<script src="EspruinoTools/core/utils.js"></script>
+    <script src="EspruinoTools/core/config.js"></script>
+	<script src="EspruinoTools/core/serial.js"></script>
+    <!-- SERIAL_INTERFACES -->
+    <script src="EspruinoTools/core/serial_chrome_serial.js"></script>
+    <script src="EspruinoTools/core/serial_chrome_socket.js"></script>
+    <script src="EspruinoTools/core/serial_node_serial.js"></script> <!-- Electron / nw.js -->
+    <script src="EspruinoTools/core/serial_web_audio.js"></script>
+    <script src="EspruinoTools/core/serial_web_bluetooth.js"></script>
+    <script src="EspruinoTools/core/serial_web_serial.js"></script>
+    <script src="EspruinoTools/core/serial_frame.js"></script>
+	<script src="EspruinoTools/libs/webrtc-connection.js"></script>       
+    <script src="EspruinoTools/core/serial_webrtc.js"></script>
+
+    <script src="EspruinoTools/core/terminal.js"></script>
+    <script src="EspruinoTools/core/codeWriter.js"></script>
+    <script src="EspruinoTools/core/modules.js"></script>
+    <script src="EspruinoTools/core/env.js"></script>
+    <script src="EspruinoTools/core/flasher.js"></script>
+    <script src="EspruinoTools/core/flasherESP8266.js"></script>
+	<!-- Non-vital Plugins -->
+    <script src="EspruinoTools/plugins/boardJSON.js"></script>
+    <script src="EspruinoTools/plugins/versionChecker.js"></script>
+    <script src="EspruinoTools/plugins/compiler.js"></script>
+    <script src="EspruinoTools/plugins/assembler.js"></script>
+    <script src="EspruinoTools/plugins/getGitHub.js"></script>
+    <script src="EspruinoTools/libs/utf8.js"></script> <!-- needed for unicode -->
+    <script src="EspruinoTools/plugins/unicode.js"></script>
+
+    <script src="EspruinoTools/libs/esprima/esprima.js"></script> <!-- needed for minify -->
+    <script src="EspruinoTools/libs/esprima/esmangle.js"></script> <!-- needed for minify -->
+    <script src="EspruinoTools/libs/esprima/escodegen.js"></script> <!-- needed for minify -->
+    <script src="EspruinoTools/plugins/minify.js"></script>
+    <script src="EspruinoTools/plugins/pretokenise.js"></script> <!-- This should come before saveOnSend -->
+    <script src="EspruinoTools/plugins/saveOnSend.js"></script> <!-- This should come after minify -->
+    <script src="EspruinoTools/plugins/setTime.js"></script> <!-- This should come after save on send -->
+	<script src="untokenize.js"></script>
+    <script>
+        // Sample JavaScript to display. Replace or generate dynamically as needed.
+
+        const uploadBtn = document.getElementById('uploadBtn');
+        const copyBtn = document.getElementById('copyBtn');
+        const saveBtn = document.getElementById('saveBtn');
+        const codeBlock = document.getElementById('codeBlock');
+        const status = document.getElementById('status');
+
+        uploadBtn.addEventListener('click', () => {
+            Espruino.Plugins.Pretokenise.testUntokenize().then(f => {
+                if (f) {
+                    codeBlock.textContent = f;
+                    copyBtn.disabled = false;
+                    saveBtn.disabled = false;
+                    status.textContent = 'Code loaded.';
+                } else {
+                    status.textContent = 'Failed to load code.';
+                }
+                setTimeout(() => { status.textContent = ''; }, 2000);
+            });
+        });
+
+        copyBtn.addEventListener('click', async () => {
+            try {
+                await navigator.clipboard.writeText(codeBlock.textContent);
+                status.textContent = 'Copied to clipboard.';
+            } catch (err) {
+                status.textContent = 'Copy failed.';
+                console.error(err);
+            }
+            setTimeout(() => { status.textContent = ''; }, 2000);
+        });
+
+        // Save button: uses File System Access API when available, falls back to blob download
+        saveBtn.addEventListener('click', async () => {
+            const text = codeBlock.textContent || '';
+            if (!text) {
+                status.textContent = 'Nothing to save.';
+                setTimeout(() => { status.textContent = ''; }, 1500);
+                return;
+            }
+
+            const defaultName = 'FW_full.js';
+            try {
+                if (window.showSaveFilePicker) {
+                    const options = {
+                        suggestedName: defaultName,
+                        types: [
+                            {
+                                description: 'JavaScript',
+                                accept: { 'text/javascript': ['.js'] }
+                            }
+                        ]
+                    };
+                    const handle = await window.showSaveFilePicker(options);
+                    const writable = await handle.createWritable();
+                    await writable.write(text);
+                    await writable.close();
+                } else {
+                    // Fallback download
+                    const blob = new Blob([text], { type: 'text/javascript' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = defaultName;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    URL.revokeObjectURL(url);
+                }
+                status.textContent = 'Saved.';
+            } catch (err) {
+                console.error(err);
+                status.textContent = 'Save failed.';
+            }
+            setTimeout(() => { status.textContent = ''; }, 2000);
+        });
+
+    </script>
+</body>
+</html>
