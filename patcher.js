@@ -313,7 +313,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // Use RegExp for global replacement
-        const regex = new RegExp(escapeRegExp(marker), 'g');
+        const regex = new RegExp(escapeRegExp(marker) + '(?![a-zA-Z0-9_])', 'g');
         let found = false;
 
         // Ensure newlines for clarity. Place new code ABOVE marker.

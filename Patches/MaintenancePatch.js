@@ -3,10 +3,10 @@ window.Patches.MaintenancePatch = {
     // 'insert' objects are injected at insertion markers
     insert: {
         RAMScan: `
-const RAMScanEnabled == false;
+const RAMScanEnabled = false;
 const ramScanTimeout;
 function drawRamOverlay() {
-  if (RAMScanEnabled == false) {
+  if (!RAMScanEnabled) {
     return;
   }
 
@@ -61,10 +61,10 @@ setTimeout(() => {
 }, 3000);
 		`,
 		RAMScanToggle: `
-		"RAM Scan": function()
-		{
-			RAMScanEnabled != RAMScanEnabled;
-		},
+			"RAM Scan": function()
+			{
+				RAMScanEnabled = !RAMScanEnabled;
+			},
 		`
 	},
 
