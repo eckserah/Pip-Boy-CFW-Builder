@@ -208,8 +208,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     for (const markerName in patchData.insert) {
                         const fullMarker = `//${patchKey}Insert_${markerName}`; // Construct the full marker string
 
-                        // [REMOVED] Duplicate marker check was here
-
                         console.log(`    - Inserting at marker: ${markerName}`);
                         const insertionCode = patchData.insert[markerName];
                         const originalLength = patchedContent.length; // Store length before insertion

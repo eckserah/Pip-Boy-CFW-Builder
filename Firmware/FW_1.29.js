@@ -1,4 +1,6 @@
 // 1.29
+//MaintenancePatchInsert_RAMScan
+
 function log(a, b)
 {
 	let c;
@@ -2503,6 +2505,7 @@ let submenuMaintenance = () =>
 		{
 			Pip.removeSubmenu(), submenuPalette()
 		},
+		//MaintenancePatchInsert_RAMScanToggle
 		"Demo mode": enterDemoMode,
 		About: function()
 		{

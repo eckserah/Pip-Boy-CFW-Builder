@@ -27,6 +27,12 @@ const PATCH_MANIFEST = {
         name: "SPECIAL System",
         description: "Adds the SPECIAL system.",
         file: "Patches/SpecialPatch.js"
+    },
+	
+	"MaintenancePatch": {
+        name: "Maintenance Features",
+        description: "Adds advanced maintenance features like RAM Scan and theme palette customization.",
+        file: "Patches/MaintenancePatch.js"
     }
 
     // Add new patches here

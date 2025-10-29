@@ -2,8 +2,6 @@ window.Patches.SpecialPatch = {
     
     // 'insert' objects are injected at insertion markers
     insert: {
-        // This key "CustomFunction" will look for a marker named:
-        // //InvPatchInsert_CustomFunction
         SpecialFunction: `
 let submenuSpecial = () =>
 {
