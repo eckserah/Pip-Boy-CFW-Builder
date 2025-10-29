@@ -19,7 +19,7 @@ const PATCH_MANIFEST = {
 
     "PerksPatch": {
         name: "Perks System",
-        description: "Adds perks system.",
+        description: "Adds the perks system.",
         file: "Patches/PerksPatch.js"
     }
 

@@ -1,4 +1,3 @@
-
 const FW_VERSIONS = {
     "1.29": {
         name: "FW Version 1.29",

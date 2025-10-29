@@ -7,11 +7,13 @@ document.addEventListener('DOMContentLoaded', () => {
     let baseFileContent = null;
     let selectedFileName = 'FW_patched.js'; // Default download name
     let patchScriptsLoaded = 0;
-    const totalPatches = (typeof PATCH_MANIFEST !== 'undefined') ? Object.keys(PATCH_MANIFEST).length : 0; // Check if PATCH_MANIFEST exists
+    // Check if PATCH_MANIFEST exists and is defined before getting keys
+    const totalPatches = (typeof PATCH_MANIFEST !== 'undefined' && PATCH_MANIFEST) ? Object.keys(PATCH_MANIFEST).length : 0;
 
     // --- 1. Populate FW Dropdown ---
-    if (typeof FW_VERSIONS === 'undefined' || Object.keys(FW_VERSIONS).length === 0) {
-        console.error("FW_VERSIONS manifest not found or is empty.");
+    // Check if FW_VERSIONS exists and is defined
+    if (typeof FW_VERSIONS === 'undefined' || !FW_VERSIONS || Object.keys(FW_VERSIONS).length === 0) {
+        console.error("FW_VERSIONS manifest not found, is undefined, or is empty.");
         fwSelect.innerHTML = '<option value="">Error loading versions</option>';
         fwSelect.disabled = true;
         patchButton.disabled = true; // Disable patch button if FW versions fail
@@ -27,8 +29,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- 2. Patch Loading and UI Population ---
     if (totalPatches === 0) {
-        patchListDiv.innerHTML = '<p>No patches found in manifest.</p>';
-        // Don't completely disable if FW loaded, just note no patches
+        patchListDiv.innerHTML = '<p>No patches found in manifest (PATCH_MANIFEST).</p>';
+        // Don't completely disable if FW might load later, just note no patches
         if (!baseFileContent) patchButton.disabled = true;
     } else {
         // Clear the "Loading..." text
@@ -37,43 +39,56 @@ document.addEventListener('DOMContentLoaded', () => {
         // Loop through the manifest and dynamically load each patch script
         for (const patchKey in PATCH_MANIFEST) {
             const patchInfo = PATCH_MANIFEST[patchKey];
+            // Basic check if patchInfo is valid
+            if (!patchInfo || !patchInfo.file) {
+                console.error(`Invalid patch info for key "${patchKey}" in PATCH_MANIFEST.`);
+                patchScriptsLoaded++; // Increment counter even for errors to avoid blocking UI
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'patch-item';
+                errorDiv.style.color = 'red';
+                errorDiv.innerHTML = `<label style="text-decoration: line-through;">${patchInfo?.name || patchKey}</label><p>Invalid manifest entry. Check console.</p>`;
+                patchListDiv.appendChild(errorDiv);
+                continue; // Skip to next patch
+            }
+
             const script = document.createElement('script');
             script.src = patchInfo.file;
-            script.async = false; // Try loading scripts sequentially
+            script.async = false; // Load scripts sequentially to help ensure dependencies if needed
 
             script.onload = () => {
                 patchScriptsLoaded++;
-                // Check if the patch data was actually added
-                 if (window.Patches && window.Patches[patchKey]) {
+                // Check if the patch data was actually added by the script
+                if (window.Patches && window.Patches[patchKey]) {
                     createPatchCheckbox(patchKey, patchInfo);
-                 } else {
-                    console.error(`Patch script ${patchInfo.file} loaded, but window.Patches.${patchKey} is undefined.`);
-                     // Optionally display an error in the UI for this patch
+                    console.log(`Successfully loaded and processed patch: ${patchKey} from ${patchInfo.file}`);
+                } else {
+                    console.error(`Patch script ${patchInfo.file} loaded, but window.Patches.${patchKey} is undefined. Check the script content.`);
+                     // Display an error in the UI for this patch
                     const errorDiv = document.createElement('div');
                     errorDiv.className = 'patch-item';
                     errorDiv.style.color = 'red';
-                    errorDiv.innerHTML = `<label style="text-decoration: line-through;">${patchInfo.name}</label><p>Error loading patch data. Check console.</p>`;
+                    errorDiv.innerHTML = `<label style="text-decoration: line-through;">${patchInfo.name}</label><p>Error loading patch data. Check script content & console.</p>`;
                     patchListDiv.appendChild(errorDiv);
-                 }
+                }
 
                 // If all patch scripts have finished attempting to load
                 if (patchScriptsLoaded === totalPatches) {
-                    console.log("All patch scripts processed.");
+                    console.log(`All ${totalPatches} patch scripts processed.`);
                 }
             };
 
-            script.onerror = () => {
-                console.error(`Failed to load patch file: ${patchInfo.file}`);
+            script.onerror = (event) => {
+                console.error(`Failed to load patch script file: ${patchInfo.file}`, event);
                 patchScriptsLoaded++;
-                 // Optionally display an error in the UI for this patch
+                 // Display an error in the UI for this patch
                  const errorDiv = document.createElement('div');
                  errorDiv.className = 'patch-item';
                  errorDiv.style.color = 'red';
-                 errorDiv.innerHTML = `<label style="text-decoration: line-through;">${patchInfo.name}</label><p>Failed to load script file. Check console.</p>`;
+                 errorDiv.innerHTML = `<label style="text-decoration: line-through;">${patchInfo.name}</label><p>Failed to load script file (${patchInfo.file}). Check path & console.</p>`;
                  patchListDiv.appendChild(errorDiv);
 
                  if (patchScriptsLoaded === totalPatches) {
-                    console.log("All patch scripts processed (with errors).");
+                    console.log(`All ${totalPatches} patch scripts processed (with errors).`);
                 }
             };
 
@@ -114,16 +129,17 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         try {
+            console.log(`Fetching FW: ${selectedFile}`);
             const response = await fetch(selectedFile);
             if (!response.ok) {
                 // More specific error for common GitHub Pages 404
                 if(response.status === 404 && window.location.hostname.endsWith('github.io')){
-                     throw new Error(`HTTP 404: File not found. Make sure '${selectedFile}' exists and the filename/path in fw_manifest.js is correct (case-sensitive).`);
+                     throw new Error(`HTTP 404: File not found. Make sure '${selectedFile}' exists in the repository and the filename/path in fw_manifest.js is correct (case-sensitive).`);
                 } else {
                     throw new Error(`HTTP error! status: ${response.status} loading ${selectedFile}`);
                 }
             }
-            // Read as text using UTF-8 explicitly, matching patch files
+            // Read as text using UTF-8 explicitly
             baseFileContent = await response.text();
             selectedFileName = selectedFile.replace('.js', '_patched.js'); // Update download name
             patchButton.disabled = false; // Re-enable button
@@ -145,31 +161,31 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // Set download name based on selected FW
-        downloadLink.download = selectedFileName;
+        downloadLink.download = selectedFileName; // Set download name based on selected FW
 
         let patchedContent = baseFileContent;
         const selectedPatches = patchListDiv.querySelectorAll('input[type="checkbox"]:checked');
 
         if (selectedPatches.length === 0) {
-            alert('No patches selected.');
-            // Optionally allow downloading the base file if no patches selected?
-            // If so, skip the patching loop and go straight to download creation.
-            // For now, require patches.
+            alert('No patches selected. Click Download to get the selected base FW file.');
+             // Allow downloading the base file if no patches selected
+             createDownloadLink(patchedContent, selectedFileName.replace('_patched.js', '.js')); // Use original name
             return;
         }
 
-        console.log("Starting patching process..."); // Log start
+        console.log("Starting patching process...");
+
+        // Keep track of applied insertion markers to prevent duplicates
+        const appliedInsertionMarkers = new Set();
 
         try {
             selectedPatches.forEach(checkbox => {
                 const patchKey = checkbox.dataset.patchKey;
-                console.log(`Applying patch: ${patchKey}`); // Log each patch
+                console.log(`Applying patch: ${patchKey}`);
                 const patchData = window.Patches[patchKey];
 
                 // Robust check for patch data
                 if (!patchData || typeof patchData !== 'object') {
-                    // Check manifest info for better error message
                     const patchManifestInfo = PATCH_MANIFEST[patchKey];
                     const scriptSrc = patchManifestInfo ? patchManifestInfo.file : 'Unknown script';
                     throw new Error(`Patch data object for "${patchKey}" (from ${scriptSrc}) is missing or invalid. Check the patch script file and browser console for loading errors.`);
@@ -184,43 +200,72 @@ document.addEventListener('DOMContentLoaded', () => {
                         patchedContent = applyReplacement(patchedContent, patchKey, regionName, patchData.replace[regionName]);
                     }
                 } else {
-                     console.log(` -> No 'replace' object found or invalid for ${patchKey}`);
+                     console.log(` -> No valid 'replace' object found for ${patchKey}`);
                 }
 
                 // Process Insertions
                 if (patchData.insert && typeof patchData.insert === 'object') {
                      console.log(` -> Processing insertions for ${patchKey}`);
                     for (const markerName in patchData.insert) {
-                         console.log(`    - Inserting at marker: ${markerName}`);
-                        patchedContent = applyInsertion(patchedContent, patchKey, markerName, patchData.insert[markerName]);
+                        const fullMarker = `//${patchKey}Insert_${markerName}`; // Construct the full marker string
+
+                        // Check if this specific marker has already been used in this patching run
+                        if (appliedInsertionMarkers.has(fullMarker)) {
+                             console.warn(`    - SKIPPING insertion at marker "${fullMarker}" - already applied by another patch.`);
+                             continue; // Skip this insertion
+                        }
+
+                        console.log(`    - Inserting at marker: ${markerName}`);
+                        const insertionCode = patchData.insert[markerName];
+                        const originalLength = patchedContent.length; // Store length before insertion
+                        patchedContent = applyInsertion(patchedContent, patchKey, markerName, insertionCode);
+
+                        // If applyInsertion returned modified content (didn't just warn and return original)
+                        // and the marker now exists AFTER the inserted code (basic check)
+                        if (patchedContent !== null && patchedContent.length > originalLength && patchedContent.includes(`\n${insertionCode}\n${fullMarker}`)) {
+                             appliedInsertionMarkers.add(fullMarker); // Mark this marker as used
+                             console.log(`    - Successfully inserted at ${fullMarker}`);
+                        } else if (patchedContent === null) {
+                             // applyInsertion itself should have warned if marker not found
+                             console.warn(`    - Insertion failed or marker ${fullMarker} not found.`);
+                        }
                     }
                 } else {
-                     console.log(` -> No 'insert' object found or invalid for ${patchKey}`);
+                     console.log(` -> No valid 'insert' object found for ${patchKey}`);
                 }
                  console.log(` -> Finished patch: ${patchKey}`);
             });
 
-            console.log("Patching process complete."); // Log end
+            console.log("Patching process complete.");
 
             // --- 5. Create Download ---
-            console.log("Creating download Blob...");
-            // console.log("Final Patched Content (Check for garbled icons):\n", patchedContent); // Keep this for debugging if needed
-
-            // Create Blob using UTF-8 which matches how patch files are saved/handled
-            const blob = new Blob([patchedContent], { type: 'text/javascript;charset=utf-8' });
-            const url = URL.createObjectURL(blob);
-
-            downloadLink.href = url;
-            downloadLink.style.display = 'block';
-             console.log("Download link created.");
-            alert('File patched successfully! Click the download link below.');
+            createDownloadLink(patchedContent, selectedFileName);
 
 
         } catch (error) {
              console.error("Error during patching loop:", error); // Log specific error
             alert(`An error occurred during patching:\n${error.message}\nCheck the console (F12) for more details.`);
+            downloadLink.style.display = 'none'; // Hide link on error
         }
     }); // End of patchButton listener
+
+    /**
+     * Creates the download link.
+     */
+     function createDownloadLink(content, filename) {
+        console.log(`Creating download Blob for ${filename}...`);
+        // console.log("Final Content:\n", content); // Keep for debugging if needed
+
+        // Create Blob using UTF-8
+        const blob = new Blob([content], { type: 'text/javascript;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+
+        downloadLink.href = url;
+        downloadLink.download = filename; // Use the provided filename
+        downloadLink.style.display = 'block';
+        console.log("Download link created.");
+        alert('File ready! Click the download link below.');
+     }
 
     /**
      * Replaces a marked region with new code.
@@ -255,8 +300,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const contentAfter = content.substring(endIndex + endMarker.length);
 
         // Ensure newlines around the inserted code and markers for clarity
-        const newBlock = `\n${replacementCode}\n`; // Add newlines to the replacement code itself
+        // Add newlines to the replacement code itself if they aren't already there
+        const cleanReplacementCode = replacementCode.trim(); // Remove leading/trailing whitespace just in case
+        const newBlock = `\n${cleanReplacementCode}\n`;
 
+        console.log(`    - Successfully replaced content between ${startMarker} and ${endMarker}`);
         return contentBefore + startMarker + newBlock + endMarker + contentAfter;
     }
 
@@ -270,24 +318,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
          // Ensure insertionCode is a string
         if (typeof insertionCode !== 'string') {
-             console.warn(`Insertion code for "${markerName}" in patch "${patchKey}" is not a string. Skipping.`);
-             return content;
+             console.warn(`    - Insertion code for "${markerName}" in patch "${patchKey}" is not a string. Skipping.`);
+             return content; // Return original content unchanged
         }
 
-
-        // Use RegExp for global replacement in case marker appears multiple times (though unlikely/undesirable)
+        // Use RegExp for global replacement
         const regex = new RegExp(escapeRegExp(marker), 'g');
+        let found = false;
 
-        if (!regex.test(content)) { // Use test first to avoid unnecessary replace operations
-             console.warn(`Insertion marker "${marker}" not found in file. Skipping marker "${markerName}".`);
-             return content;
+        // Ensure newlines for clarity. Place new code ABOVE marker.
+        const cleanInsertionCode = insertionCode.trim(); // Remove leading/trailing whitespace
+        const replacement = `\n${cleanInsertionCode}\n${marker}`; // Add marker back below inserted code
+
+
+        const newContent = content.replace(regex, (match) => {
+             found = true;
+             return replacement;
+        });
+
+        if (!found) {
+             console.warn(`    - Insertion marker "${marker}" not found in file. Skipping marker "${markerName}".`);
+             return content; // Return original content if marker wasn't found
         }
 
-        // We replace the marker with the code *and* the marker below it.
-        // Ensure newlines for clarity.
-        const replacement = `\n${insertionCode}\n${marker}`;
-
-        return content.replace(regex, replacement);
+        return newContent; // Return the modified content
     }
 
     /**
@@ -299,6 +353,3 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
 }); // End DOMContentLoaded
-
-
-
