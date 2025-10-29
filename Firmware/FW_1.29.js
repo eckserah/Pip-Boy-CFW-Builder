@@ -1965,6 +1965,7 @@ let submenuInvAttach = () =>
 };
 //InvPatchInsert_ItemsFunction
 //PerksPatchInsert_PerksFunction
+//SpecialPatchInsert_SpecialFunction
 let submenuExtTerminal = () =>
 {
 	E.setUSBHID(
@@ -2899,6 +2900,7 @@ E.showMenu = function(g)
 	{
 		STATUS: submenuStatus,
 		//PerksPatchInsert_Menu
+		//SpecialPatchInsert_Menu
 		CONNECT: submenuConnect,
 		DIAGNOSTICS: submenuDiagnostics
 	}
