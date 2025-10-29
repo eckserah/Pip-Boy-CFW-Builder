@@ -4,60 +4,396 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FW.js Modular Patcher</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
     <style>
-        body { font-family: sans-serif; background: #f0f0f0; padding: 20px; }
-        .container { max-width: 700px; margin: 0 auto; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        h1 { text-align: center; }
-        .step { margin-bottom: 20px; }
-        #patch-list { border: 1px solid #ddd; padding: 10px; border-radius: 4px; max-height: 300px; overflow-y: auto; }
-        .patch-item { margin-bottom: 10px; }
-        .patch-item label { font-weight: bold; display: block; }
-        .patch-item p { font-size: 0.9em; margin: 4px 0 0 20px; color: #555; }
-        button { font-size: 1.2em; padding: 10px 20px; cursor: pointer; display: block; width: 100%; }
-        #download-link {
-            display: none; /* Hidden by default */
-            padding: 15px;
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Share Tech Mono', monospace;
+            background: #0a0a0a;
+            color: #00ff41;
+            padding: 20px;
+            min-height: 100vh;
+            background-image: 
+                repeating-linear-gradient(
+                    0deg,
+                    rgba(0, 255, 65, 0.03) 0px,
+                    transparent 1px,
+                    transparent 2px,
+                    rgba(0, 255, 65, 0.03) 3px
+                );
+            animation: scanlines 8s linear infinite;
+        }
+
+        @keyframes scanlines {
+            0% { background-position: 0 0; }
+            100% { background-position: 0 100%; }
+        }
+
+        @keyframes flicker {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.97; }
+        }
+
+        @keyframes glow {
+            0%, 100% { 
+                text-shadow: 
+                    0 0 5px #00ff41,
+                    0 0 10px #00ff41,
+                    0 0 20px #00ff41;
+            }
+            50% { 
+                text-shadow: 
+                    0 0 2px #00ff41,
+                    0 0 5px #00ff41,
+                    0 0 10px #00ff41;
+            }
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: rgba(0, 20, 0, 0.9);
+            padding: 30px;
+            border: 3px solid #00ff41;
+            box-shadow: 
+                inset 0 0 30px rgba(0, 255, 65, 0.1),
+                0 0 30px rgba(0, 255, 65, 0.3);
+            position: relative;
+            animation: flicker 0.15s infinite;
+        }
+
+        .container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                repeating-linear-gradient(
+                    90deg,
+                    rgba(0, 255, 65, 0.03) 0px,
+                    transparent 2px,
+                    transparent 4px,
+                    rgba(0, 255, 65, 0.03) 6px
+                );
+            pointer-events: none;
+        }
+
+        h1 {
             text-align: center;
-            background: #28a745;
-            color: white;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            animation: glow 2s ease-in-out infinite;
+            border-bottom: 2px solid #00ff41;
+            padding-bottom: 15px;
+        }
+
+        .subtitle {
+            text-align: center;
+            font-size: 0.9em;
+            margin-bottom: 30px;
+            opacity: 0.7;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .step {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 2px solid #00ff41;
+            background: rgba(0, 255, 65, 0.05);
+            position: relative;
+        }
+
+        .step::before {
+            content: '█';
+            position: absolute;
+            left: 10px;
+            top: 10px;
+            animation: glow 1s ease-in-out infinite;
+        }
+
+        h3 {
+            margin-bottom: 15px;
+            font-size: 1.3em;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            padding-left: 25px;
+        }
+
+        select, button {
+            font-family: 'Share Tech Mono', monospace;
+            background: #001a00;
+            color: #00ff41;
+            border: 2px solid #00ff41;
+            padding: 12px 20px;
+            font-size: 1em;
+            cursor: pointer;
+            width: 100%;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        select:hover, select:focus {
+            background: rgba(0, 255, 65, 0.1);
+            box-shadow: 
+                inset 0 0 10px rgba(0, 255, 65, 0.2),
+                0 0 10px rgba(0, 255, 65, 0.3);
+            outline: none;
+        }
+
+        button {
+            margin-top: 10px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        button:not(:disabled):hover {
+            background: rgba(0, 255, 65, 0.2);
+            box-shadow: 
+                inset 0 0 20px rgba(0, 255, 65, 0.3),
+                0 0 20px rgba(0, 255, 65, 0.5);
+        }
+
+        button:not(:disabled):active {
+            transform: scale(0.98);
+        }
+
+        #patch-list {
+            border: 2px solid #00ff41;
+            padding: 10px;
+            max-height: 400px;
+            overflow-y: auto;
+            background: rgba(0, 20, 0, 0.5);
+            scrollbar-width: thin;
+            scrollbar-color: #00ff41 #001a00;
+        }
+
+        #patch-list::-webkit-scrollbar {
+            width: 12px;
+        }
+
+        #patch-list::-webkit-scrollbar-track {
+            background: #001a00;
+            border: 1px solid #00ff41;
+        }
+
+        #patch-list::-webkit-scrollbar-thumb {
+            background: #00ff41;
+            border: 1px solid #001a00;
+        }
+
+        #patch-list::-webkit-scrollbar-thumb:hover {
+            background: #00dd36;
+        }
+
+        .patch-item {
+            margin-bottom: 8px;
+            padding: 8px 12px;
+            border-left: 3px solid #00ff41;
+            background: rgba(0, 255, 65, 0.03);
+            transition: all 0.2s ease;
+            cursor: pointer;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+        }
+
+        .patch-item:hover {
+            background: rgba(0, 255, 65, 0.08);
+            border-left-width: 5px;
+        }
+
+        .patch-item input[type="checkbox"] {
+            margin-top: 2px;
+            width: 18px;
+            height: 18px;
+            flex-shrink: 0;
+            accent-color: #00ff41;
+            cursor: pointer;
+        }
+
+        .patch-item-content {
+            flex: 1;
+            cursor: pointer;
+        }
+
+        .patch-item label {
+            font-weight: bold;
+            display: block;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-size: 0.95em;
+        }
+
+        .patch-item p {
+            font-size: 0.8em;
+            margin: 4px 0 0 0;
+            opacity: 0.7;
+            line-height: 1.4;
+        }
+
+        #fw-loading-status {
+            color: #00ff41;
+            opacity: 0.7;
+            margin-top: 10px;
+            text-align: center;
+            animation: glow 1.5s ease-in-out infinite;
+        }
+
+        #download-link {
+            display: none;
+            padding: 20px;
+            text-align: center;
+            background: rgba(0, 255, 65, 0.2);
+            color: #00ff41;
             text-decoration: none;
-            font-size: 1.2em;
-            border-radius: 4px;
-            margin-top: 20px;
+            font-size: 1.3em;
+            border: 3px solid #00ff41;
+            margin-top: 30px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            transition: all 0.3s ease;
+            animation: glow 2s ease-in-out infinite;
+        }
+
+        #download-link:hover {
+            background: rgba(0, 255, 65, 0.3);
+            box-shadow: 
+                inset 0 0 30px rgba(0, 255, 65, 0.3),
+                0 0 30px rgba(0, 255, 65, 0.5);
+            transform: scale(1.02);
+        }
+
+        .terminal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 5px;
+            font-size: 0.8em;
+            opacity: 0.6;
+            text-transform: uppercase;
+        }
+
+        .blink {
+            animation: blink 1s step-end infinite;
+        }
+
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
+        }
+
+        .corner-bracket {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #00ff41;
+        }
+
+        .corner-bracket.tl {
+            top: -2px;
+            left: -2px;
+            border-right: none;
+            border-bottom: none;
+        }
+
+        .corner-bracket.tr {
+            top: -2px;
+            right: -2px;
+            border-left: none;
+            border-bottom: none;
+        }
+
+        .corner-bracket.bl {
+            bottom: -2px;
+            left: -2px;
+            border-right: none;
+            border-top: none;
+        }
+
+        .corner-bracket.br {
+            bottom: -2px;
+            right: -2px;
+            border-left: none;
+            border-top: none;
         }
     </style>
 </head>
 <body>
-
     <div class="container">
+        <div class="corner-bracket tl"></div>
+        <div class="corner-bracket tr"></div>
+        <div class="corner-bracket bl"></div>
+        <div class="corner-bracket br"></div>
+
+        <div class="terminal-header">
+            <span>ROBCO INDUSTRIES UNIFIED OPERATING SYSTEM</span>
+            <span>COPYRIGHT 2075-2077 ROBCO INDUSTRIES</span>
+        </div>
+
         <h1>FW.js Modular Patcher</h1>
+        <div class="subtitle">█ Firmware Modification System █</div>
 
         <div class="step">
-            <h3>Step 1: Select your base FW version</h3>
+            <h3>█ Step 1: Select Base FW Version</h3>
             <select id="fw-select">
-                <option value="">-- Select Version --</option>
-                </select>
-            <p id="fw-loading-status" style="display: none; color: #888; margin-top: 5px;">Loading file...</p>
+                <option value="">-- SELECT VERSION --</option>
+            </select>
+            <p id="fw-loading-status" style="display: none;">LOADING FILE<span class="blink">█</span></p>
         </div>
+
         <div class="step">
-            <h3>Step 2: Select patches to apply</h3>
+            <h3>█ Step 2: Select Patches to Apply</h3>
             <div id="patch-list">
-                <p>Loading patches...</p>
+                <p>LOADING PATCHES<span class="blink">█</span></p>
             </div>
         </div>
 
         <div class="step">
-            <h3>Step 3: Generate Patched File</h3>
-            <button id="patch-button" disabled>1. Select FW Version</button>
-             </div>
+            <h3>█ Step 3: Generate Patched File</h3>
+            <button id="patch-button" disabled>1. SELECT FW VERSION</button>
+        </div>
 
-        <a id="download-link" href="#" download="FW.js_patched.js">Download Patched File</a>
+        <a id="download-link" href="#" download="FW.js_patched.js">
+            █ DOWNLOAD PATCHED FILE █
+        </a>
     </div>
 
     <script> window.Patches = {}; </script>
     <script src="Patches/patch_manifest.js"></script>
     <script src="Firmware/fw_manifest.js"></script>
     <script src="patcher.js"></script>
-
+    <script>
+        // Make entire patch item clickable
+        document.addEventListener('click', function(e) {
+            const patchItem = e.target.closest('.patch-item');
+            if (patchItem && e.target.type !== 'checkbox' && e.target.tagName !== 'LABEL') {
+                const checkbox = patchItem.querySelector('input[type="checkbox"]');
+                if (checkbox) {
+                    checkbox.checked = !checkbox.checked;
+                    // Trigger change event for any existing listeners
+                    checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+            }
+        });
+    </script>
 </body>
 </html>

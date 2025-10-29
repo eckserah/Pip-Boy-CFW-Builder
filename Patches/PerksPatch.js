@@ -378,8 +378,7 @@ let submenuPerks = () =>
 	
 		drawDescription(bounds)
 		{
-			bC.setFont("Vector", 12)
-				.drawString(bC.wrapString(this.description, (bounds.right - 10) - (bounds.left + 10)).join("\\n"), bounds.left + 10, bounds.top); // padded 10 left and right
+			bC.setFont("Vector", 12).drawString(bC.wrapString(this.description, (bounds.right - 10) - (bounds.left + 10)).join("\\n"), bounds.left + 10, bounds.top); // padded 10 left and right
 		}
 	
 		draw(menu)
