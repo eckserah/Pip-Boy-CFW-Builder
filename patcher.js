@@ -262,8 +262,11 @@ document.addEventListener('DOMContentLoaded', () => {
      * Markers: //PatchKeyBegin_RegionName ... //PatchKeyEnd_RegionName
      */
     function applyReplacement(content, patchKey, regionName, replacementCode) {
-        const startMarker = `//${patchKey}Begin_${regionName}`;
-        const endMarker = `//${patchKey}End_${regionName}`;
+        // Define all 4 marker styles
+        const startMarkerSlashes = `//${patchKey}Begin_${regionName}`;
+        const endMarkerSlashes = `//${patchKey}End_${regionName}`;
+        const startMarkerStars = `/*${patchKey}Begin_${regionName}*/`;
+        const endMarkerStars = `/*${patchKey}End_${regionName}*/`;
 
         // Ensure replacementCode is a string
         if (typeof replacementCode !== 'string') {
@@ -271,17 +274,44 @@ document.addEventListener('DOMContentLoaded', () => {
              return content;
         }
 
-        // Find the start index
-        const startIndex = content.indexOf(startMarker);
+        // --- Find the first valid start marker ---
+        const startIndexSlashes = content.indexOf(startMarkerSlashes);
+        const startIndexStars = content.indexOf(startMarkerStars);
+        let startIndex = -1;
+        let startMarker = '';
+
+        // Pick the marker that appears first (and is not -1)
+        if (startIndexSlashes !== -1 && (startIndexStars === -1 || startIndexSlashes <= startIndexStars)) {
+            startIndex = startIndexSlashes;
+            startMarker = startMarkerSlashes;
+        } else if (startIndexStars !== -1) {
+            startIndex = startIndexStars;
+            startMarker = startMarkerStars;
+        }
+
         if (startIndex === -1) {
-            console.warn(`Replacement start marker "${startMarker}" not found in file. Skipping region "${regionName}".`);
+            console.warn(`Replacement start marker "${startMarkerSlashes}" OR "${startMarkerStars}" not found in file. Skipping region "${regionName}".`);
             return content;
         }
 
-        // Find the end index *after* the start index
-        const endIndex = content.indexOf(endMarker, startIndex + startMarker.length);
+        // --- Find the first valid end marker *after* the start marker ---
+        const searchFrom = startIndex + startMarker.length;
+        const endIndexSlashes = content.indexOf(endMarkerSlashes, searchFrom);
+        const endIndexStars = content.indexOf(endMarkerStars, searchFrom);
+        let endIndex = -1;
+        let endMarker = '';
+
+        // Pick the marker that appears first (and is not -1)
+        if (endIndexSlashes !== -1 && (endIndexStars === -1 || endIndexSlashes <= endIndexStars)) {
+            endIndex = endIndexSlashes;
+            endMarker = endMarkerSlashes;
+        } else if (endIndexStars !== -1) {
+            endIndex = endIndexStars;
+            endMarker = endMarkerStars;
+        }
+
         if (endIndex === -1) {
-            console.warn(`Replacement end marker "${endMarker}" not found after start marker in file. Skipping region "${regionName}".`);
+            console.warn(`Replacement end marker "${endMarkerSlashes}" OR "${endMarkerStars}" not found after start marker in file. Skipping region "${regionName}".`);
             return content;
         }
 
@@ -290,11 +320,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const contentAfter = content.substring(endIndex + endMarker.length);
 
         // Ensure newlines around the inserted code and markers for clarity
-        // Add newlines to the replacement code itself if they aren't already there
         const cleanReplacementCode = replacementCode.trim(); // Remove leading/trailing whitespace just in case
         const newBlock = `\n${cleanReplacementCode}\n`;
 
         console.log(`    - Successfully replaced content between ${startMarker} and ${endMarker}`);
+        // Use the *actual* markers that were found
         return contentBefore + startMarker + newBlock + endMarker + contentAfter;
     }
 
@@ -304,7 +334,9 @@ document.addEventListener('DOMContentLoaded', () => {
      * Marker: //PatchKeyInsert_MarkerName
      */
     function applyInsertion(content, patchKey, markerName, insertionCode) {
-        const marker = `//${patchKey}Insert_${markerName}`;
+        // Define both marker styles
+        const markerSlashes = `//${patchKey}Insert_${markerName}`;
+        const markerStars = `/*${patchKey}Insert_${markerName}*/`; // New star-based marker
 
          // Ensure insertionCode is a string
         if (typeof insertionCode !== 'string') {
@@ -312,22 +344,29 @@ document.addEventListener('DOMContentLoaded', () => {
              return content; // Return original content unchanged
         }
 
-        // Use RegExp for global replacement
-        const regex = new RegExp(escapeRegExp(marker) + '(?![a-zA-Z0-9_])', 'g');
+        // Create regex parts for both
+        const regexSlashes = escapeRegExp(markerSlashes) + '(?![a-zA-Z0-9_])'; // Keep the fix
+        const regexStars = escapeRegExp(markerStars); // Star version is self-contained
+
+        // Combine them with an OR |
+        const regex = new RegExp(`(${regexSlashes})|(${regexStars})`, 'g');
+        
         let found = false;
 
         // Ensure newlines for clarity. Place new code ABOVE marker.
         const cleanInsertionCode = insertionCode.trim(); // Remove leading/trailing whitespace
-        const replacement = `\n${cleanInsertionCode}\n${marker}`; // Add marker back below inserted code
-
 
         const newContent = content.replace(regex, (match) => {
              found = true;
+             // 'match' will be the exact marker that was found (slashes or stars)
+             // We add the inserted code, a newline, and then add the *original marker* back.
+             const replacement = `\n${cleanInsertionCode}\n${match}`; 
              return replacement;
         });
 
         if (!found) {
-             console.warn(`    - Insertion marker "${marker}" not found in file. Skipping marker "${markerName}".`);
+             // Update warning to show both markers it looked for
+             console.warn(`    - Insertion marker "${markerSlashes}" OR "${markerStars}" not found in file. Skipping marker "${markerName}".`);
              return content; // Return original content if marker wasn't found
         }
 

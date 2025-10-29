@@ -2935,7 +2935,7 @@ E.showMenu = function(g)
 {
 	name: "RADIO",
 	fn: submenuRadio
-}], getUserApps().length || delete MODEINFO[2].submenu.APPS, Pip.setPalette && settings.palette && Pip.setPalette(settings.palette.split(",").map(a => new Uint16Array(E.toArrayBuffer(atob(a))))), checkBatteryAndSleep() || (KNOB1_BTN.read() && BTN_POWER.read() ? (log("Entering factory test mode"), factoryTestMode()) : Pip.isSDCardInserted() ? (Pip.addWatches(), KNOB1_BTN.read() ? (log("Booting into demo mode"), enterDemoMode()) : settings.longPressToWake ? (log("Playing boot animation"), settings.longPressToWake = !1, saveSettings(), playBootAnimation()) : (Pip.sleeping = "BUSY", Pip.fadeOn(), fs.statSync("BOOT") ? (log("Normal boot - showing main menu"), setTimeout(a =>
+}], getUserApps().length || delete MODEINFO[2].submenu.APPS, Pip.setPalette && settings.palette && Pip.setPalette(settings.palette.split(",").map(a => new Uint16Array(E.toArrayBuffer(atob(a))))), checkBatteryAndSleep() || (KNOB1_BTN.read() && BTN_POWER.read() ? (log("Entering factory test mode"), factoryTestMode()) : Pip.isSDCardInserted() ? (Pip.addWatches(),/*MaintenancePatchInsert_RAMScanCheck*/ KNOB1_BTN.read() ? (log("Booting into demo mode"), enterDemoMode()) : settings.longPressToWake ? (log("Playing boot animation"), settings.longPressToWake = !1, saveSettings(), playBootAnimation()) : (Pip.sleeping = "BUSY", Pip.fadeOn(), fs.statSync("BOOT") ? (log("Normal boot - showing main menu"), setTimeout(a =>
 {
 	Pip.fadeOff().then(a =>
 	{
