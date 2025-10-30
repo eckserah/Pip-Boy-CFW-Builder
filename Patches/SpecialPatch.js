@@ -437,6 +437,6 @@ let submenuSpecial = () =>
 
     // 'replace' objects replace entire blocks
     replace: {
-        // This patch doesn't replace any regions, so this is empty.
+        
     }
 };

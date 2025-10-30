@@ -33,6 +33,20 @@ const PATCH_MANIFEST = {
         name: "Maintenance Features",
         description: "Adds advanced maintenance features like RAM Scan and theme palette customization.",
         file: "Patches/MaintenancePatch.js"
+    },
+	
+	"CustomRadioPatch": {
+        name: "Custom Radio Patch",
+        description: "Adds custom radios based on folders in the radio folder.",
+        file: "Patches/CustomRadioPatch.js"
+    },
+	
+	"KPSSRenamePatch": {
+        "file": "Patches/KPSSRenamePatch.js",
+        "name": "KPSS Rename",
+        "description": "Rename 'KPSS Radio' to a custom name.",
+        "inputType": "text",
+        "placeholder": "Enter new name (e.g., GNR)"
     }
 
     // Add new patches here

@@ -1533,6 +1533,7 @@ let radioPlayClip = (a, b) => (a == undefined && (a = CLIP_TYPE.MUSIC), new Prom
 		b && console.log(`Playing radio clip type ${a}: ${e[g]}`), Pip.audioStart("RADIO/" + e[g]), Pip.on("audioStopped", d), Pip.radioClipPlaying = !0, Pip.lastClipIndex = g
 	}
 }));
+//CustomRadioPatchBegin_submenuRadio
 let submenuRadio = () =>
 {
 	rd._options || rd.setupI2C(), bC.clear(1);
@@ -1656,6 +1657,7 @@ let submenuRadio = () =>
 		Pip.radioKPSS = !1, clearInterval(h), rd.tuningInterval && clearInterval(rd.tuningInterval), rd.tuningInterval = null, rd.rdsTimer && clearInterval(rd.rdsTimer), rd.rdsTimer = null, Pip.removeListener("knob2", i), b && clearTimeout(b), g()
 	}
 };
+//CustomRadioPatchEnd_submenuRadio
 let submenuStatus = () =>
 {
 	const c = {
@@ -2777,6 +2779,7 @@ let submenuPalette = () =>
 		bH.flip(), bC.flip(), bF.flip()
 	}, 50)
 };
+/*KPSSRenamePatchBegin_ShowMenuRewrite*/
 E.showMenu = function(g)
 {
 	function i(a)
@@ -2856,7 +2859,7 @@ E.showMenu = function(g)
 	{
 		Pip.removeListener("knob1", i)
 	}, c
-}, E.showPrompt = function(e, a)
+}/*KPSSRenamePatchEnd_ShowMenuRewrite*/, E.showPrompt = function(e, a)
 {
 	function c()
 	{
@@ -2904,8 +2907,10 @@ E.showMenu = function(g)
 		STATUS: submenuStatus,
 		//PerksPatchInsert_Menu
 		//SpecialPatchInsert_Menu
+		//SpecialPerksComboBegin_StatMenuItems
 		CONNECT: submenuConnect,
 		DIAGNOSTICS: submenuDiagnostics
+		//SpecialPerksComboEnd_StatMenuItems
 	}
 },
 {
