@@ -1,133 +1,229 @@
 // 1.29
+/* below are the defined global variables
+ * g = graphics object
+ * fs = filesystem object
+ * rd = radio object
+ * Pip = Pip object
+ * E = Espruino object
+ * LCD_BL = LCD backlight pin
+ * LED_RED = red LED pin
+ * LED_GREEN = green LED pin
+ * LED_BLUE = blue LED pin
+ * LED_TUNING = tuning LED pin
+ * BTN_POWER = power button pin
+ * BTN_TORCH = torch button pin
+ * BTN_PLAY = play button pin
+ * BTN_TUNEUP = tune up button pin
+ * BTN_TUNEDOWN = tune down button pin
+ * KNOB1_A = knob 1 A pin
+ * KNOB1_B = knob 1 B pin
+ * KNOB1_BTN = knob 1 button pin
+ * KNOB2_A = knob 2 A pin
+ * KNOB2_B = knob 2 B pin
+ * VBAT_MEAS = battery measurement pin
+ * VUSB_PRESENT = USB power detect pin
+ * VUSB_MEAS = USB voltage measurement pin
+ * MEAS_ENB = measurement enable pin
+ * CHARGE_STAT = charge status pin
+ * RADIO_AUDIO = radio audio pin
+ * MODE_SELECTOR = mode selector pin
+ * SDCARD_DETECT = SD card detect pin
+ * BGRECT = background rectangle for submenu
+ * bC = main page content pane
+ * bH = main page header pane
+ * bF = main page footer pane
+ * sm0 = submenu index
+ */
+
 //MaintenancePatchInsert_RAMScan
 
-function log(a, b)
+/**
+ * Logs a message to a file in the LOGS folder.
+ * @param {string} message - Message to log.
+ * @param {number} b - File to log to.
+ * @returns {null}
+ * @example
+ * log("An error occurred", "error.log");
+ */
+function log(message, filename)
 {
-	let c;
-	b || (b = "exceptions.log");
+	let logFolder;
+	filename || (filename = "exceptions.log");
 	try
 	{
-		c = fs.statSync("LOGS")
+		logFolder = fs.statSync("LOGS")
 	}
-	catch (b)
+	catch (error)
 	{
-		a || (a = "SD CARD ERROR")
+		message || (message = "SD CARD ERROR")
 	}
-	console.log(a), c && c.dir ? fs.appendFile("LOGS/" + b, `${new Date().toISOString()} ${a}\n`) : require("Storage").open(b, "a").write(`${new Date().toISOString()} ${a}\n`)
+	console.log(message), logFolder && logFolder.dir ? fs.appendFile("LOGS/" + filename, `${new Date().toISOString()} ${message}\n`) : require("Storage").open(filename, "a").write(`${new Date().toISOString()} ${message}\n`)
 }
 
+/**
+ * Saves settings to the SD card.
+ * @returns {null}
+ * @example
+ * saveSettings();
+ */
 function saveSettings()
 {
 	if (!Pip.isSDCardInserted()) throw new Error("Can't save settings - no SD card");
 	fs.writeFile("settings.json", JSON.stringify(settings))
 }
 
+/**
+ * Configure and set the alarms
+ * @returns {null}
+ * @example
+ * configureAlarm();
+ */
 function configureAlarm()
 {
 	if (alarmTimeout && (console.log("Cancelling existing alarm"), clearTimeout(alarmTimeout)), alarmTimeout = undefined, settings.alarm.enabled && settings.alarm.time && !Pip.demoMode)
 	{
-		let b = Pip.getDateAndTime();
-		let a = new Date(settings.alarm.time);
-		settings.alarm.snoozeTime && (a = new Date(settings.alarm.snoozeTime)), a.getTime() <= b.getTime() && (console.log(`Alarm time (${a}) is in the past, setting to tomorrow`), a = Pip.getDateAndTime(), a.setDate(b.getDate() + 1), a.setHours(new Date(settings.alarm.time).getHours()), a.setMinutes(new Date(settings.alarm.time).getMinutes()), delete settings.alarm.snoozeTime), settings.alarm.snoozeTime || (settings.alarm.time = a.getTime()), alarmTimeout = setTimeout(function a()
+		let currentDate = Pip.getDateAndTime();
+		let alarmDate = new Date(settings.alarm.time);
+		settings.alarm.snoozeTime && (alarmDate = new Date(settings.alarm.snoozeTime)), alarmDate.getTime() <= currentDate.getTime() && (console.log(`Alarm time (${alarmDate}) is in the past, setting to tomorrow`), alarmDate = Pip.getDateAndTime(), alarmDate.setDate(currentDate.getDate() + 1), alarmDate.setHours(new Date(settings.alarm.time).getHours()), alarmDate.setMinutes(new Date(settings.alarm.time).getMinutes()), delete settings.alarm.snoozeTime), settings.alarm.snoozeTime || (settings.alarm.time = alarmDate.getTime()), alarmTimeout = setTimeout(function a()
 		{
 			if (Pip.sleeping == "BUSY") return setTimeout(a, 1e4);
 			settings.alarm.repeat || (settings.alarm.enabled = !1);
-			let b = Pip.sleeping;
-			b ? wakeFromSleep(showAlarm) : showAlarm(), console.log("ALARM!")
-		}, a.getTime() - b.getTime()), console.log(`Alarm set to ${a} (${((a.getTime()-b.getTime())/60/6e4).toFixed(3)} hours away)`)
+			let isPipSleeping = Pip.sleeping;
+			isPipSleeping ? wakeFromSleep(showAlarm) : showAlarm(), console.log("ALARM!")
+		}, alarmDate.getTime() - currentDate.getTime()), console.log(`Alarm set to ${alarmDate} (${((alarmDate.getTime()-currentDate.getTime())/60/6e4).toFixed(3)} hours away)`)
 	}
 }
 
+/**
+ * Wake on long press of power button
+ * @returns {null}
+ * @example
+ * wakeOnLongPress();
+ */
 function wakeOnLongPress()
 {
 	if (BTN_POWER.read())
 	{
-		let a = setWatch(a =>
+		let watchId = setWatch(a =>
 		{
-			clearTimeout(b)
+			clearTimeout(wakeInterval)
 		}, BTN_POWER,
 		{
 			edge: "falling"
 		});
-		let b = setTimeout(b =>
+		let wakeInterval = setTimeout(b =>
 		{
-			clearWatch(a), settings.longPressToWake = !1, saveSettings(), wakeFromSleep(playBootAnimation)
+			clearWatch(watchId), settings.longPressToWake = !1, saveSettings(), wakeFromSleep(playBootAnimation)
 		}, 2e3)
 	}
 }
 
-function playBootAnimation(b)
+/**
+ * Plays the boot animation.
+ * @param {number} dontAutoExit - If set to 0 will stop the animation from exiting once finished.
+ * @returns {Promise} - Promise that resolves when the animation is complete.
+ * @example
+ * playBootAnimation();
+ * playBootAnimation(0); // Play animation but don't auto exit
+ */
+function playBootAnimation(dontAutoExit)
 {
 	console.log("Playing boot animation");
-	let a = null;
-	return b === undefined && (b = !0), Pip.remove && Pip.remove(), Pip.removeSubmenu && Pip.removeSubmenu(), Pip.videoStart("BOOT/BOOT.avi",
+	let animationInterval = null;
+	return dontAutoExit === undefined && (dontAutoExit = !0), Pip.remove && Pip.remove(), Pip.removeSubmenu && Pip.removeSubmenu(), Pip.videoStart("BOOT/BOOT.avi",
 	{
 		x: 40
-	}), Pip.fadeOn(), new Promise((e, f) =>
+	}), Pip.fadeOn(), new Promise((resolve, reject) =>
 	{
-		let c = () =>
+		let animationListener = () =>
 		{
-			Pip.removeListener("videoStopped", c), Pip.audioStart("BOOT/BOOT_DONE.wav"), b && (a = setTimeout(a =>
+			Pip.removeListener("videoStopped", animationListener), Pip.audioStart("BOOT/BOOT_DONE.wav"), b && (animationInterval = setTimeout(a =>
 			{
 				Pip.fadeOff().then(a =>
 				{
 					showMainMenu(), setTimeout(a => Pip.fadeOn([LCD_BL]), 200)
 				})
-			}, 2e3)), e()
+			}, 2e3)), resolve()
 		};
-		let d = () =>
+		let doneListener = () =>
 		{
-			Pip.removeListener("videoStopped", d), g.clear(1).drawPoly([90, 45, 90, 35, 390, 35, 390, 45]).drawPoly([90, 275, 90, 285, 390, 285, 390, 275]);
-			let a = settings.userName ? `Pip-Boy assigned to ${settings.userName}` : "Success!";
-			g.setFontMonofonto18().setFontAlign(0, -1).drawString(a, 240, 250), Pip.videoStart("UI/THUMBUP.avi",
+			Pip.removeListener("videoStopped", doneListener), g.clear(1).drawPoly([90, 45, 90, 35, 390, 35, 390, 45]).drawPoly([90, 275, 90, 285, 390, 285, 390, 275]);
+			let message = settings.userName ? `Pip-Boy assigned to ${settings.userName}` : "Success!";
+			g.setFontMonofonto18().setFontAlign(0, -1).drawString(message, 240, 250), Pip.videoStart("UI/THUMBUP.avi",
 			{
 				x: 160,
 				y: 55
-			}), Pip.on("videoStopped", c)
+			}), Pip.on("videoStopped", animationListener)
 		};
-		Pip.on("videoStopped", d), Pip.remove = function()
+		Pip.on("videoStopped", doneListener), Pip.remove = function()
 		{
-			Pip.removeAllListeners("videoStopped"), a && clearTimeout(a)
+			Pip.removeAllListeners("videoStopped"), animationInterval && clearTimeout(animationInterval)
 		}
 	})
 }
 
+/**
+ * Checks the battery and then, if battery is low, displays a low battery image and then sleeps.
+ * @returns {boolean} - Whether the device is low on battery.
+ * @example
+ * checkBatteryAndSleep();
+ */
 function checkBatteryAndSleep()
 {
-	let a = Pip.measurePin(VBAT_MEAS);
+	let battVoltage = Pip.measurePin(VBAT_MEAS);
 	if (VUSB_PRESENT.read()) return !1;
-	if (a < 3.2) return log(`Battery voltage too low (${a.toFixed(2)} V) - shutting down immediately`), clearInterval(), clearWatch(), Pip.sleeping = !0, setTimeout(Pip.off, 100), !0;
-	else if (a < 3.5)
+	if (battVoltage < 3.2) return log(`Battery voltage too low (${battVoltage.toFixed(2)} V) - shutting down immediately`), clearInterval(), clearWatch(), Pip.sleeping = !0, setTimeout(Pip.off, 100), !0;
+	else if (battVoltage < 3.5)
 	{
-		log(`Battery voltage too low (${a.toFixed(2)} V) - showing battery warning then shutting down`), Pip.sleeping && Pip.wake(), clearInterval(), clearWatch();
-		let b = 240,
-			c = 160;
-		return g.clear(1).fillRect(b - 60, c - 20, b + 60, c - 18).fillRect(b - 60, c + 18, b + 60, c + 20).fillRect(b - 60, c - 18, b - 58, c + 18).fillRect(b + 58, c - 18, b + 60, c + 18).fillRect(b + 60, c - 6, b + 68, c + 6).setColor(g.blendColor(g.theme.bg, g.theme.fg, .5)).fillRect(b - 54, c - 14, b - 48, c + 14), setTimeout(() => LCD_BL.set(), 150), Pip.sleeping = !0, setTimeout(Pip.off, 2e3), !0
+		log(`Battery voltage too low (${battVoltage.toFixed(2)} V) - showing battery warning then shutting down`), Pip.sleeping && Pip.wake(), clearInterval(), clearWatch();
+		let x = 240,
+			y = 160;
+		return g.clear(1).fillRect(x - 60, y - 20, x + 60, y - 18).fillRect(x - 60, y + 18, x + 60, y + 20).fillRect(x - 60, y - 18, x - 58, y + 18).fillRect(x + 58, y - 18, x + 60, y + 18).fillRect(x + 60, y - 6, x + 68, y + 6).setColor(g.blendColor(g.theme.bg, g.theme.fg, .5)).fillRect(x - 54, y - 14, x - 48, y + 14), setTimeout(() => LCD_BL.set(), 150), Pip.sleeping = !0, setTimeout(Pip.off, 2e3), !0
 	}
 	else return !1
 }
 
-function wakeFromSleep(a)
+/**
+ * Wakes the display from sleep.
+ * @param {function} callback - Function to call right before the screen fades in. Usually used to set up the animation to play on wake.
+ * @returns {null} 
+ * @example
+ * wakeFromSleep(playBootAnimation); // Play boot animation on wake
+ */
+function wakeFromSleep(callback)
 {
 	Pip.sleeping = "BUSY", Pip.wake(), Pip.brightness < 10 && (Pip.brightness = 20), Pip.mode == MODE.TEST && (Pip.mode = null), Pip.addWatches(), setTimeout(c =>
 	{
 		let b = [LCD_BL, LED_RED, LED_GREEN];
-		rd.setupI2C(), a(), Pip.fadeOn(b).then(a =>
+		rd.setupI2C(), callback(), Pip.fadeOn(b).then(a =>
 		{
 			Pip.sleeping = !1
 		})
 	}, 100)
 }
 
-function submenuBlank(a)
+/**
+ * Blank the submenu rectangle and display a custom message.
+ * @param {string} message - Message to display in the submenu.
+ * @returns {function} - Function that when called displays the message. 
+ * @example
+ * submenuBlank("No options available")();
+ */
+function submenuBlank(message)
 {
 	return function()
 	{
-		bC.clear(1).setFontMonofonto23(), bC.setFontAlign(0, 0).drawString(a, bC.getWidth() / 2, bC.getHeight() / 2), bC.flip(), Pip.removeSubmenu = function() {}
+		bC.clear(1).setFontMonofonto23(), bC.setFontAlign(0, 0).drawString(message, bC.getWidth() / 2, bC.getHeight() / 2), bC.flip(), Pip.removeSubmenu = function() {}
 	}
 }
-
-function showMainMenu(b)
+/**
+ * Shows the main menu of the current mode.
+ * @param {null} unused - Unused parameter.
+ * @returns {null}
+ * @example
+ * submenuBlank("No options available")();
+ */
+function showMainMenu(unused)
 {
 	if (Pip.remove && Pip.remove(), process.env.VERSION < MIN_FW_VER)
 	{
@@ -135,27 +231,33 @@ function showMainMenu(b)
 		return
 	}
 	Pip.mode = null, d0 = null, MEAS_ENB.write(0);
-	var a = setInterval(checkMode, 50);
-	Pip.on("knob2", b =>
+	var checkModeInterval = setInterval(checkMode, 50);
+	Pip.on("knob2", knobDirection =>
 	{
-		let a = MODEINFO[Pip.mode];
-		if (a && a.submenu)
+		let currentModeInfo = MODEINFO[Pip.mode];
+		if (currentModeInfo && currentModeInfo.submenu)
 		{
-			let c = Object.keys(a.submenu);
-			sm0 = (sm0 + c.length + b) % c.length, drawHeader(Pip.mode), Pip.removeSubmenu && Pip.removeSubmenu(), delete Pip.removeSubmenu, g.clearRect(BGRECT), a.submenu[c[sm0]](), Pip.knob2Click(b)
+			let subMenuFunctions = Object.keys(currentModeInfo.submenu);
+			sm0 = (sm0 + subMenuFunctions.length + knobDirection) % subMenuFunctions.length, drawHeader(Pip.mode), Pip.removeSubmenu && Pip.removeSubmenu(), delete Pip.removeSubmenu, g.clearRect(BGRECT), currentModeInfo.submenu[subMenuFunctions[sm0]](), Pip.knob2Click(knobDirection)
 		}
 	}), Pip.on("torch", torchButtonHandler), Pip.remove = () =>
 	{
-		Pip.removeSubmenu && Pip.removeSubmenu(), delete Pip.removeSubmenu, Pip.removeAllListeners("knob2"), MEAS_ENB.write(1), clearInterval(a), Pip.removeAllListeners("torch")
+		Pip.removeSubmenu && Pip.removeSubmenu(), delete Pip.removeSubmenu, Pip.removeAllListeners("knob2"), MEAS_ENB.write(1), clearInterval(checkModeInterval), Pip.removeAllListeners("torch")
 	}, Pip.radioOn && setTimeout(a =>
 	{
 		!(Pip.sleeping || rd.isOn()) && (rd.enable(!0), Pip.mode == MODE.RADIO) && (Pip.audioStart("UI/RADIO_ON.wav"), Pip.removeSubmenu && Pip.removeSubmenu(), delete Pip.removeSubmenu, submenuRadio())
-	}, 2e3), settings.alarm.snoozeTime && Pip.on("knob1", a =>
+	}, 2e3), settings.alarm.snoozeTime && Pip.on("knob1", knobDirection =>
 	{
-		a == 0 && settings.alarm.snoozeTime && (E.stopEventPropagation(), delete settings.alarm.snoozeTime, saveSettings(), Pip.audioStop(), configureAlarm(), clearInterval(), Pip.videoStop(), bH.clear().flip(), bC.clear(1), bC.setFontMonofonto36().setFontAlign(0, 0), bC.drawString("SNOOZE CANCELED", 200, 100).flip(), drawFooter(), setTimeout(showMainMenu, 3e3))
+		knobDirection == 0 && settings.alarm.snoozeTime && (E.stopEventPropagation(), delete settings.alarm.snoozeTime, saveSettings(), Pip.audioStop(), configureAlarm(), clearInterval(), Pip.videoStop(), bH.clear().flip(), bC.clear(1), bC.setFontMonofonto36().setFontAlign(0, 0), bC.drawString("SNOOZE CANCELED", 200, 100).flip(), drawFooter(), setTimeout(showMainMenu, 3e3))
 	})
 }
 
+/**
+ * Puts the PipBoy in demo mode.
+ * @returns {null}
+ * @example
+ * enterDemoMode();
+ */
 function enterDemoMode()
 {
 	function step()
@@ -167,9 +269,9 @@ function enterDemoMode()
 		{
 			print("Running:", cmd), eval(cmd)
 		}
-		catch (a)
+		catch (error)
 		{
-			print(a)
+			print(error)
 		}
 		s++, s >= SEQ.length && (s = 0, console.log("Loop demo, used", process.memory().usage, "vars")), Pip.demoTimeout = setTimeout(step, timeToNext)
 	}
@@ -229,32 +331,44 @@ function enterDemoMode()
 	step()
 }
 
+/**
+ * Leaves demo mode.
+ * @returns {null}
+ * @example
+ * leaveDemoMode();
+ */
 function leaveDemoMode()
 {
 	Pip.demoTimeout && (clearTimeout(Pip.demoTimeout), Pip.demoTimeout = undefined), clearWatch(), Pip.demoMode = 0, Pip.addWatches()
 }
 
+/**
+ * Run factory test mode.
+ * @returns {null}
+ * @example
+ * factoryTestMode();
+ */
 function factoryTestMode()
 {
-	function e()
+	function runAllTests()
 	{
 		if (b && ftm.currentTest < ftm.tests.length)
 		{
 			Pip.removeSubmenu && Pip.removeSubmenu();
-			let a = ftm.tests[ftm.currentTest];
-			a.testTime = Date().toLocalISOString();
-			let b = getTime();
-			a.fn ? a.fn(a).then(c =>
+			let currentTest = ftm.tests[ftm.currentTest];
+			currentTest.testTime = Date().toLocalISOString();
+			let time = getTime();
+			currentTest.fn ? currentTest.fn(currentTest).then(success =>
 			{
-				a.testDuration = Math.round(getTime() - b), a.pass = c, ftm.currentTest++, h(), e()
-			}) : (ftm.currentTest++, e())
+				currentTest.testDuration = Math.round(getTime() - time), currentTest.pass = success, ftm.currentTest++, drawTestModeHeader(), runAllTests()
+			}) : (ftm.currentTest++, runAllTests())
 		}
-		else b = !1, ftm.currentTest = null, d()
+		else b = !1, ftm.currentTest = null, drawTestList()
 	}
 
-	function i(c)
+	function testInputs(test)
 	{
-		console.log("Testing inputs"), Pip.remove && Pip.remove(), clearWatch(), c.inputs = [
+		console.log("Testing inputs"), Pip.remove && Pip.remove(), clearWatch(), test.inputs = [
 		{
 			pin: MODE_SELECTOR,
 			name: "Mode"
@@ -301,55 +415,55 @@ function factoryTestMode()
 		}];
 		const e = [.25, .75];
 		const d = [.1, .3, .5, .7, .9];
-		return c.inputLevels = new Array(c.inputs.length), c.inputPassed = new Array(c.inputs.length).fill(!1), g.setFontMonofonto18().clearRect(0, 56, 479, 319).setColor("#00C000").drawString("Input test: press buttons & turn knobs", a, 56), c.inputs.forEach((f, b) =>
+		return test.inputLevels = new Array(test.inputs.length), test.inputPassed = new Array(test.inputs.length).fill(!1), g.setFontMonofonto18().clearRect(0, 56, 479, 319).setColor("#00C000").drawString("Input test: press buttons & turn knobs", screenLeftStart, 56), test.inputs.forEach((input, idx) =>
 		{
-			g.setColor("#008000").drawString(`${f.name.padStart(12," ")}:`, a, 80 + b * 20, !0), g.setColor("#003300").fillRect(a + 126, 80 + b * 20, a + 216, 97 + b * 20), b == 0 ? (d.forEach(c =>
+			g.setColor("#008000").drawString(`${input.name.padStart(12," ")}:`, screenLeftStart, 80 + idx * 20, !0), g.setColor("#003300").fillRect(screenLeftStart + 126, 80 + idx * 20, screenLeftStart + 216, 97 + idx * 20), idx == 0 ? (d.forEach(c =>
 			{
-				g.clearRect(a + 131 + c * 80, 80 + b * 20, a + 131 + c * 80, 97 + b * 20)
-			}), g.clearRect(a + 131 + d[4] * 80, 80 + b * 20, a + 216, 97 + b * 20), c.inputLevels[b] = new Array(d.length).fill(!1)) : (e.forEach(c =>
+				g.clearRect(screenLeftStart + 131 + c * 80, 80 + idx * 20, screenLeftStart + 131 + c * 80, 97 + idx * 20)
+			}), g.clearRect(screenLeftStart + 131 + d[4] * 80, 80 + idx * 20, screenLeftStart + 216, 97 + idx * 20), test.inputLevels[idx] = new Array(d.length).fill(!1)) : (e.forEach(c =>
 			{
-				g.clearRect(a + 131 + c * 80, 80 + b * 20, a + 131 + c * 80, 97 + b * 20)
-			}), c.inputLevels[b] = new Array(2).fill(!1)), f.pin.getInfo().analog ? f.pin.mode("analog") : (f.pin.mode("input"), f.pin.mode("input_pullup"))
+				g.clearRect(screenLeftStart + 131 + c * 80, 80 + idx * 20, screenLeftStart + 131 + c * 80, 97 + idx * 20)
+			}), test.inputLevels[idx] = new Array(2).fill(!1)), input.pin.getInfo().analog ? input.pin.mode("analog") : (input.pin.mode("input"), input.pin.mode("input_pullup"))
 		}), new Promise((h, j) =>
 		{
 			function i(a)
 			{
 				a || (Pip.removeListener("knob1", i), h(!0))
 			}
-			let f = setInterval(function()
+			let testInterval = setInterval(function()
 			{
-				c.inputs.forEach((l, k) =>
+				test.inputs.forEach((l, k) =>
 				{
 					let j;
-					c.inputPassed[k] || (l.pin.getInfo().analog ? j = l.pin.analog() : j = l.pin.read() ? 1 : 0, k == 0 ? d.forEach((b, a) =>
+					test.inputPassed[k] || (l.pin.getInfo().analog ? j = l.pin.analog() : j = l.pin.read() ? 1 : 0, k == 0 ? d.forEach((b, a) =>
 					{
-						j > (a == 0 ? 0 : d[a - 1]) && j < b && (c.inputLevels[k][a] = j)
-					}) : j < e[0] ? c.inputLevels[k][0] = j : j > e[1] && (c.inputLevels[k][1] = j), g.setColor(0, 1, 0).fillRect(a + 129 + j * 80, 80 + k * 20, a + 133 + j * 80, 97 + k * 20), c.inputLevels[k].includes(!1) || (g.drawString("OK", a + 230, 80 + k * 20), c.inputPassed[k] = !0, l.pin.mode("input"), c.inputPassed.includes(!1) || (clearInterval(f), g.setColor(0, 1, 0).drawString("Input test: PASS - press knob to continue", a, 56, !0), Pip.addWatches(), b ? h(!0) : Pip.on("knob1", i))))
+						j > (a == 0 ? 0 : d[a - 1]) && j < b && (test.inputLevels[k][a] = j)
+					}) : j < e[0] ? test.inputLevels[k][0] = j : j > e[1] && (test.inputLevels[k][1] = j), g.setColor(0, 1, 0).fillRect(a + 129 + j * 80, 80 + k * 20, a + 133 + j * 80, 97 + k * 20), test.inputLevels[k].includes(!1) || (g.drawString("OK", a + 230, 80 + k * 20), test.inputPassed[k] = !0, l.pin.mode("input"), test.inputPassed.includes(!1) || (clearInterval(testInterval), g.setColor(0, 1, 0).drawString("Input test: PASS - press knob to continue", a, 56, !0), Pip.addWatches(), b ? h(!0) : Pip.on("knob1", i))))
 				})
 			}, 50);
 			Pip.remove = () =>
 			{
-				clearInterval(f)
+				clearInterval(testInterval)
 			}
 		})
 	}
 
-	function j(c)
+	function testLedsAndPixels(c)
 	{
-		console.log("Testing LEDs"), Pip.remove && Pip.remove(), g.setFontMonofonto18().setFontAlign(-1, -1).clearRect(0, 56, 479, 289).setColor("#00C000").drawString("LED test", a, 56);
-		let e = [LED_RED, LED_GREEN, LED_BLUE, LED_TUNING];
+		console.log("Testing LEDs"), Pip.remove && Pip.remove(), g.setFontMonofonto18().setFontAlign(-1, -1).clearRect(0, 56, 479, 289).setColor("#00C000").drawString("LED test", screenLeftStart, 56);
+		let leds = [LED_RED, LED_GREEN, LED_BLUE, LED_TUNING];
 		let d = 0;
-		let f = setInterval(function()
+		let ledTestInterval = setInterval(function()
 		{
-			e.forEach((a, b) =>
+			leds.forEach((led, idx) =>
 			{
-				a.write(d == b ? 1 : 0)
+				led.write(d == idx ? 1 : 0)
 			}), d = (d + 1) % 4
 		}, 500);
 		return Pip.remove = () =>
 		{
-			clearInterval(f), e.forEach(a => a.write(0))
-		}, new Promise((a, d) =>
+			clearInterval(ledTestInterval), leds.forEach(led => led.write(0))
+		}, new Promise((resolve, reject) =>
 		{
 			setTimeout(() =>
 			{
@@ -357,24 +471,24 @@ function factoryTestMode()
 				{
 					if (d)
 					{
-						c.LEDsOK = !0, console.log("LED test passed - checking pixels"), Pip.remove(), g.setColor(.2, 1, .2).fillRect(0, 0, 479, 319);
+						test.LEDsOK = !0, console.log("LED test passed - checking pixels"), Pip.remove(), g.setColor(.2, 1, .2).fillRect(0, 0, 479, 319);
 
 						function d(e)
 						{
 							Pip.removeListener("knob1", d), E.showPrompt("All pixels look OK?").then(d =>
 							{
-								g.clearRect(0, 0, 479, 319), d ? (c.pixelsOK = !0, console.log("Pixel test passed"), a(!0)) : (c.pixelsOK = !1, console.log("Pixel test failed"), b = !1, a(!1))
+								g.clearRect(0, 0, 479, 319), d ? (test.pixelsOK = !0, console.log("Pixel test passed"), resolve(!0)) : (test.pixelsOK = !1, console.log("Pixel test failed"), b = !1, resolve(!1))
 							})
 						}
 						Pip.on("knob1", d)
 					}
-					else c.LEDsOK = !1, console.log("LED test failed"), b = !1, a(!1)
+					else test.LEDsOK = !1, console.log("LED test failed"), b = !1, resolve(!1)
 				})
 			}, 2e3)
 		})
 	}
 
-	function k(c)
+	function testMeasurements(c)
 	{
 		console.log("Testing measurements"), Pip.remove && Pip.remove(), c.meas = [
 		{
@@ -417,18 +531,18 @@ function factoryTestMode()
 			name: "Temperature",
 			min: 15,
 			max: 50
-		}], c.measLevel = new Array(c.meas.length), c.measOff = new Array(c.meas.length), c.measPassed = new Array(c.meas.length).fill(null), lastValue = new Array(c.meas.length), g.setFontMonofonto18().setFontAlign(-1, -1).clearRect(0, 56, 479, 289).setColor("#00C000").drawString("Measurements test", a, 56);
+		}], c.measLevel = new Array(c.meas.length), c.measOff = new Array(c.meas.length), c.measPassed = new Array(c.meas.length).fill(null), lastValue = new Array(c.meas.length), g.setFontMonofonto18().setFontAlign(-1, -1).clearRect(0, 56, 479, 289).setColor("#00C000").drawString("Measurements test", screenLeftStart, 56);
 		let d = (j, h, b, d, c) =>
 		{
 			c == null && (c = 3), d == null && (d = "#00FF00");
 			let e = b.offMax ? 0 : b.min - (b.max - b.min) * .1;
 			let i = b.max + (b.max - b.min) * .1;
-			let f = a + 131 + (j - e) / (i - e) * 80;
+			let f = screenLeftStart + 131 + (j - e) / (i - e) * 80;
 			g.setColor(d).fillRect(f - c / 2, h, f + c / 2, h + 17)
 		};
 		c.meas.forEach((b, c) =>
 		{
-			g.setColor("#008000").drawString(`${b.name.padStart(12," ")}:`, a, 85 + c * 25, !0), g.setColor("#003300").fillRect(a + 126, 85 + c * 25, a + 216, 102 + c * 25), d(b.min, 85 + c * 25, b, 0, 1), d(b.max, 85 + c * 25, b, 0, 1), b.offMax && d(b.offMax, 85 + c * 25, b, 0, 1), b.pin && b.pin.mode("analog")
+			g.setColor("#008000").drawString(`${b.name.padStart(12," ")}:`, screenLeftStart, 85 + c * 25, !0), g.setColor("#003300").fillRect(screenLeftStart + 126, 85 + c * 25, screenLeftStart + 216, 102 + c * 25), d(b.min, 85 + c * 25, b, 0, 1), d(b.max, 85 + c * 25, b, 0, 1), b.offMax && d(b.offMax, 85 + c * 25, b, 0, 1), b.pin && b.pin.mode("analog")
 		});
 		let e = !1;
 		return new Promise((j, k) =>
@@ -458,13 +572,13 @@ function factoryTestMode()
 							h = "C", i = 1
 						}
 						else e = Pip.measurePin(f.pin, 100, f.divider);
-						g.setColor("#00FF00").setFontMonofonto18().drawString(`${e.toFixed(i)} ${h}  `, a + 230, 85 + b * 25, !0), lastValue[b] && d(lastValue[b], 85 + b * 25, f, "#006600"), d(e, 85 + b * 25, f), lastValue[b] = e, f.offMax && e < f.offMax && (c.measOff[b] = e), e >= f.min && e <= f.max && (c.measLevel[b] = e), c.measLevel[b] && (c.measOff[b] || !f.offMax) ? (c.measPassed[b] = !0, g.drawString("OK  ", a + 310, 85 + b * 25, !0)) : f.offMax || g.setColor("#FF2200").drawString("FAIL", a + 310, 85 + b * 25, !0).setColor("#00FF00")
-					}), !(c.measPassed.includes(!1) || c.measPassed.includes(null) || e)) e = !0, b ? (clearInterval(h), Pip.removeListener("knob1", i), rd.enable(0), j(!0)) : g.setColor(0, 1, 0).drawString("Measurement test: PASS - press knob", a, 56, !0);
+						g.setColor("#00FF00").setFontMonofonto18().drawString(`${e.toFixed(i)} ${h}  `, screenLeftStart + 230, 85 + b * 25, !0), lastValue[b] && d(lastValue[b], 85 + b * 25, f, "#006600"), d(e, 85 + b * 25, f), lastValue[b] = e, f.offMax && e < f.offMax && (c.measOff[b] = e), e >= f.min && e <= f.max && (c.measLevel[b] = e), c.measLevel[b] && (c.measOff[b] || !f.offMax) ? (c.measPassed[b] = !0, g.drawString("OK  ", screenLeftStart + 310, 85 + b * 25, !0)) : f.offMax || g.setColor("#FF2200").drawString("FAIL", screenLeftStart + 310, 85 + b * 25, !0).setColor("#00FF00")
+					}), !(c.measPassed.includes(!1) || c.measPassed.includes(null) || e)) e = !0, b ? (clearInterval(h), Pip.removeListener("knob1", i), rd.enable(0), j(!0)) : g.setColor(0, 1, 0).drawString("Measurement test: PASS - press knob", screenLeftStart, 56, !0);
 				else
 				{
 					let b = c.meas.findIndex(a => a.pin == VUSB_MEAS);
 					let d = "                               ";
-					c.measLevel[b] ? c.measOff[b] ? (b = c.meas.findIndex(a => a.pin == CHARGE_STAT), c.measOff[b] || (d = "Re-connect charging cable")) : d = "Disconnect charging cable" : d = "Connect charging cable", g.drawString(d, a, 260, !0)
+					c.measLevel[b] ? c.measOff[b] ? (b = c.meas.findIndex(a => a.pin == CHARGE_STAT), c.measOff[b] || (d = "Re-connect charging cable")) : d = "Disconnect charging cable" : d = "Connect charging cable", g.drawString(d, screenLeftStart, 260, !0)
 				}
 			}, 50);
 			Pip.remove = () =>
@@ -474,9 +588,9 @@ function factoryTestMode()
 		})
 	}
 
-	function l(d)
+	function testSDCard(d)
 	{
-		if (console.log("Testing SD card"), Pip.remove && Pip.remove(), g.setFontMonofonto18().setFontAlign(-1, -1).clearRect(0, 56, 479, 289).setColor("#00C000").drawString("SD card test", a, 56), !Pip.isSDCardInserted()) return new Promise((a, c) =>
+		if (console.log("Testing SD card"), Pip.remove && Pip.remove(), g.setFontMonofonto18().setFontAlign(-1, -1).clearRect(0, 56, 479, 289).setColor("#00C000").drawString("SD card test", screenLeftStart, 56), !Pip.isSDCardInserted()) return new Promise((a, c) =>
 		{
 			E.showPrompt("No SD card inserted!",
 			{
@@ -495,7 +609,7 @@ function factoryTestMode()
 			const h = (e.freeSectors * e.sectorSize / 1e6).toFixed(0);
 			const i = (e.totalSectors * e.sectorSize / 1e6).toFixed(0);
 			const m = `${h}/${i} MB free`;
-			let f, j;
+			let file, j;
 			d.sdInfo = [
 			{
 				name: "Size",
@@ -548,31 +662,31 @@ function factoryTestMode()
 			let l;
 			return d.sdInfo.forEach((b, d) =>
 			{
-				if (g.setColor("#008000").drawString(`${b.name.padStart(12," ")}:`, a, 85 + d * 25, !0), b.value == null)
+				if (g.setColor("#008000").drawString(`${b.name.padStart(12," ")}:`, screenLeftStart, 85 + d * 25, !0), b.value == null)
 				{
-					if (g.setColor("#003300").fillRect(a + 126, 85 + d * 25, a + 226, 102 + d * 25).setColor("#00FF00"), j = getTime(), b.name == "Write speed")
+					if (g.setColor("#003300").fillRect(screenLeftStart + 126, 85 + d * 25, screenLeftStart + 226, 102 + d * 25).setColor("#00FF00"), j = getTime(), b.name == "Write speed")
 					{
-						f = E.openFile("test", "w");
-						for (let e = 0; e < 50; e++) f.write(c), g.fillRect(a + 126, 85 + d * 25, a + 126 + e * 2, 102 + d * 25)
+						file = E.openFile("test", "w");
+						for (let e = 0; e < 50; e++) file.write(sdTestArray), g.fillRect(screenLeftStart + 126, 85 + d * 25, screenLeftStart + 126 + e * 2, 102 + d * 25)
 					}
 					else if (b.name == "Read speed")
 					{
-						f = E.openFile("test", "r");
-						for (let e = 0; e < 50; e++) l = f.read(c.length), g.fillRect(a + 126, 85 + d * 25, a + 126 + e * 2, 102 + d * 25)
+						file = E.openFile("test", "r");
+						for (let e = 0; e < 50; e++) l = file.read(sdTestArray.length), g.fillRect(screenLeftStart + 126, 85 + d * 25, screenLeftStart + 126 + e * 2, 102 + d * 25)
 					}
-					j = getTime() - j, f.close(), g.clearRect(a + 126, 85 + d * 25, a + 226, 102 + d * 25), b.value = (50 * c.length / 1024 / j).toFixed(0), g.drawString(b.value + " " + b.units, a + 126, 85 + d * 25, !0)
+					j = getTime() - j, file.close(), g.clearRect(screenLeftStart + 126, 85 + d * 25, screenLeftStart + 226, 102 + d * 25), b.value = (50 * sdTestArray.length / 1024 / j).toFixed(0), g.drawString(b.value + " " + b.units, screenLeftStart + 126, 85 + d * 25, !0)
 				}
-				else g.setColor("#00FF00").drawString(b.value + " " + b.units, a + 126, 85 + d * 25, !0);
+				else g.setColor("#00FF00").drawString(b.value + " " + b.units, screenLeftStart + 126, 85 + d * 25, !0);
 				if (b.name == "Integrity")
 				{
 					let e = E.toUint8Array(l);
-					if (l.length == c.length)
+					if (l.length == sdTestArray.length)
 					{
 						b.value = "PASS";
-						for (let a = 0; a < l.length; a++) e[a] != c[a] && (b.value = "FAIL")
+						for (let a = 0; a < l.length; a++) e[a] != sdTestArray[a] && (b.value = "FAIL")
 					}
 					else b.value = "FAIL";
-					g.drawString(b.value + "      ", a + 126, 85 + d * 25, !0)
+					g.drawString(b.value + "      ", screenLeftStart + 126, 85 + d * 25, !0)
 				}
 				else if (b.name == "Files")
 				{
@@ -588,10 +702,10 @@ function factoryTestMode()
 							l: d.size
 						})
 					}
-					fs.readdir().forEach(e.bind(null, '')), b.value = c.length, g.drawString(b.value + "      ", a + 126, 85 + d * 25, !0)
+					fs.readdir().forEach(e.bind(null, '')), b.value = c.length, g.drawString(b.value + "      ", screenLeftStart + 126, 85 + d * 25, !0)
 				}
-				b.value === "PASS" || b.value >= b.min && b.value <= b.max ? g.drawString("OK", a + 230, 85 + d * 25, !0) : (g.setColor("#FF2200").drawString("FAIL", a + 230, 85 + d * 25, !0), k = !1)
-			}), fs.unlink("test"), g.setColor(0, 1, 0).drawString("SD card test completed - press knob", a, 56, !0), new Promise((a, d) =>
+				b.value === "PASS" || b.value >= b.min && b.value <= b.max ? g.drawString("OK", screenLeftStart + 230, 85 + d * 25, !0) : (g.setColor("#FF2200").drawString("FAIL", screenLeftStart + 230, 85 + d * 25, !0), k = !1)
+			}), fs.unlink("test"), g.setColor(0, 1, 0).drawString("SD card test completed - press knob", screenLeftStart, 56, !0), new Promise((a, d) =>
 			{
 				function c(b)
 				{
@@ -602,9 +716,9 @@ function factoryTestMode()
 		}
 	}
 
-	function m(e)
+	function testAudio(e)
 	{
-		console.log("Testing audio"), Pip.remove && Pip.remove(), g.setFontMonofonto18().setFontAlign(-1, -1).clearRect(0, 56, 479, 289).setColor("#00C000").drawString("Audio test", a, 56);
+		console.log("Testing audio"), Pip.remove && Pip.remove(), g.setFontMonofonto18().setFontAlign(-1, -1).clearRect(0, 56, 479, 289).setColor("#00C000").drawString("Audio test", screenLeftStart, 56);
 		let f;
 		if (Pip.isSDCardInserted()) Pip.audioStart("UI/ALERT.wav");
 		else
@@ -618,7 +732,7 @@ function factoryTestMode()
 		}
 		let d = !0;
 		let c = 100;
-		return e.audio = [
+		return test.audio = [
 		{
 			name: "Sound check",
 			value: null,
@@ -643,7 +757,7 @@ function factoryTestMode()
 			{
 				if (f && clearInterval(f), g.clearRect(0, 76, 479, 289), i)
 				{
-					e.audio[0].value = "PASS", rd.init(), rd.freqSet(c), rd.setVol(15);
+					test.audio[0].value = "PASS", rd.init(), rd.freqSet(c), rd.setVol(15);
 
 					function i(a)
 					{
@@ -661,20 +775,20 @@ function factoryTestMode()
 							}
 						}
 					}
-					Pip.on("knob1", i), e.audio.forEach((b, c) =>
+					Pip.on("knob1", i), test.audio.forEach((b, c) =>
 					{
-						g.setColor("#008000").drawString(`${b.name.padStart(12," ")}:`, a, 85 + c * 25, !0)
+						g.setColor("#008000").drawString(`${b.name.padStart(12," ")}:`, screenLeftStart, 85 + c * 25, !0)
 					});
 					let f = 0;
 					let j = setInterval(function()
 					{
-						f++, d = !0, e.audio.forEach((b, e) =>
+						f++, d = !0, test.audio.forEach((b, e) =>
 						{
 							let h = 2;
 							b.name == "FM frequency" ? b.value = c : b.name == "RSSI" && (b.value = rd.getRSSI(), h = 0);
 							let i = b.value;
-							b.units && (i = `${b.value.toFixed(h)} ${b.units}  `), g.setColor("#00FF00").setFontMonofonto18().drawString(i, a + 126, 85 + e * 25, !0), f > 3 && (b.value == "PASS" || b.value >= b.min && b.value <= b.max ? g.drawString("OK  ", a + 230, 85 + e * 25, !0) : (g.setColor("#FF2200").drawString("FAIL", a + 230, 85 + e * 25, !0).setColor("#00FF00"), d = !1))
-						}), g.drawString(d ? ": PASS - press knob" : "                   ", a + 90, 56, !0)
+							b.units && (i = `${b.value.toFixed(h)} ${b.units}  `), g.setColor("#00FF00").setFontMonofonto18().drawString(i, screenLeftStart + 126, 85 + e * 25, !0), f > 3 && (b.value == "PASS" || b.value >= b.min && b.value <= b.max ? g.drawString("OK  ", screenLeftStart + 230, 85 + e * 25, !0) : (g.setColor("#FF2200").drawString("FAIL", screenLeftStart + 230, 85 + e * 25, !0).setColor("#00FF00"), d = !1))
+						}), g.drawString(d ? ": PASS - press knob" : "                   ", screenLeftStart + 90, 56, !0)
 					}, 200);
 					Pip.remove = () =>
 					{
@@ -686,20 +800,20 @@ function factoryTestMode()
 		})
 	}
 
-	function n(c)
+	function testUSB(c)
 	{
-		console.log("Testing USB"), Pip.remove && Pip.remove(), g.setFontMonofonto18().setFontAlign(-1, -1).clearRect(0, 56, 479, 289).setColor("#00C000").drawString("USB test", a, 56), c.pass = !1, c.status = "Connect USB cable";
+		console.log("Testing USB"), Pip.remove && Pip.remove(), g.setFontMonofonto18().setFontAlign(-1, -1).clearRect(0, 56, 479, 289).setColor("#00C000").drawString("USB test", screenLeftStart, 56), test.pass = !1, test.status = "Connect USB cable";
 		let d = !1;
 		return new Promise((e, h) =>
 		{
 			function a(d)
 			{
-				d || (Pip.removeListener("knob1", a), c.status = "Aborted", b = !1, e(c.pass))
+				d || (Pip.removeListener("knob1", a), test.status = "Aborted", b = !1, e(test.pass))
 			}
 			Pip.on("knob1", a);
 			let f = setInterval(function()
 			{
-				!d && VUSB_PRESENT.read() && (d = !0, c.status = "Waiting for data"), c.pass && (Pip.removeListener("knob1", a), e(c.pass)), g.setFontAlign(0, 0).drawString("          " + c.status + "          ", 240, 160, !0)
+				!d && VUSB_PRESENT.read() && (d = !0, test.status = "Waiting for data"), test.pass && (Pip.removeListener("knob1", a), e(test.pass)), g.setFontAlign(0, 0).drawString("          " + test.status + "          ", 240, 160, !0)
 			}, 200);
 			Pip.remove = () =>
 			{
@@ -712,78 +826,79 @@ function factoryTestMode()
 		jsVersion: VERSION,
 		fwVersion: process.env.VERSION
 	};
-	let a = 60;
+	let screenLeftStart = 60;
 	LCD_BL.write(1);
 	let c = new Uint8Array(4096);
-	c.forEach((b, a) => c[a] = a % 256);
+	c.forEach((val, idx) => c[idx] = idx % 256);
 	let b = !1;
 	rd.init() && rd.enable(0), ftm.tests = [
 	{
 		name: "Inputs",
-		fn: i
+		fn: testInputs
 	},
 	{
 		name: "LEDs & pixels",
-		fn: j
+		fn: testLedsAndPixels
 	},
 	{
 		name: "Measurements",
-		fn: k
+		fn: testMeasurements
 	},
 	{
 		name: "SD card",
-		fn: l
+		fn: testSDCard
 	},
 	{
 		name: "Audio",
-		fn: m
+		fn: testAudio
 	},
 	{
 		name: "USB",
-		fn: n
+		fn: testUSB
 	}];
-	let f = {
+	let testList = {
 		'':
 		{
 			x2: 200
 		},
 		"[ Run all tests ]": function()
 		{
-			b = !0, ftm.currentTest = 0, e()
+			b = !0, ftm.currentTest = 0, runAllTests()
 		}
 	};
-	let h = () =>
+	let drawTestModeHeader = () =>
 	{
-		Pip.remove && Pip.remove(), delete Pip.remove, g.clear(1).setFontMonofonto23().setColor(0, 1, 0).drawString("Pip-Boy Factory Test Mode", a, 20), g.setColor(0, .6, 0).drawLine(0, 52, 479, 52).drawLine(0, 290, 479, 290), g.setFontMonofonto16().drawString(`Version ${ftm.jsVersion} ${ftm.fwVersion}     ID:${ftm.id}`, a, 295)
+		Pip.remove && Pip.remove(), delete Pip.remove, g.clear(1).setFontMonofonto23().setColor(0, 1, 0).drawString("Pip-Boy Factory Test Mode", screenLeftStart, 20), g.setColor(0, .6, 0).drawLine(0, 52, 479, 52).drawLine(0, 290, 479, 290), g.setFontMonofonto16().drawString(`Version ${ftm.jsVersion} ${ftm.fwVersion}     ID:${ftm.id}`, screenLeftStart, 295)
 	};
-	let d = () =>
+	let drawTestList = () =>
 	{
-		h(), E.showMenu(f), bC.setFontMonofonto18().setColor(3), ftm.currentTest = null, ftm.tests.forEach((a, b) =>
+		drawTestModeHeader(), E.showMenu(testList), bC.setFontMonofonto18().setColor(3), ftm.currentTest = null, ftm.tests.forEach((test, index) =>
 		{
-			a.fn && bC.drawString(a.pass === !0 ? "PASS" : a.pass === !1 ? "FAIL!" : '', 212, 43 + b * 27)
-		}), ftm.tests.every(a => a.pass === !0) && bC.fillPolyAA([290, 100, 310, 120, 355, 65, 375, 85, 310, 145, 275, 120]);
-		let a = setInterval(function()
+			test.fn && bC.drawString(test.pass === !0 ? "PASS" : test.pass === !1 ? "FAIL!" : '', 212, 43 + index * 27)
+		}), ftm.tests.every(test => test.pass === !0) && bC.fillPolyAA([290, 100, 310, 120, 355, 65, 375, 85, 310, 145, 275, 120]);
+		let bcFlipInterval = setInterval(function()
 		{
 			bC.flip()
 		}, 50);
 		Pip.remove = () =>
 		{
-			clearInterval(a)
+			clearInterval(bcFlipInterval)
 		}
 	};
-	ftm.tests.forEach((a, b) =>
+	ftm.tests.forEach((test, index) =>
 	{
-		f[a.name] = function()
+		testList[test.name] = function()
 		{
-			Pip.removeSubmenu && Pip.removeSubmenu(), ftm.currentTest = b, a.testTime = Date().toLocalISOString();
-			let c = getTime();
-			a.fn(a).then(b =>
+			Pip.removeSubmenu && Pip.removeSubmenu(), ftm.currentTest = index, test.testTime = Date().toLocalISOString();
+			let startTime = getTime();
+			test.fn(test).then(success =>
 			{
-				a.testDuration = Math.round(getTime() - c), a.pass = b, d()
+				test.testDuration = Math.round(getTime() - startTime), test.pass = success, drawTestList()
 			})
 		}
-	}), d()
+	}), drawTestList()
 }
+
 const VERSION = "1.29";
 const MIN_FW_VER = "2v25.280";
 var fs = require("fs");
@@ -847,21 +962,21 @@ catch (a)
 {
 	log("No alarm sounds found")
 }
-Pip.setDateAndTime = a =>
+Pip.setDateAndTime = date =>
 {
-	console.log("Setting date/time to", a), settings.century = Math.floor(a.getFullYear() / 100), a.setFullYear(a.getFullYear() % 100 + 2e3), setTime(a.getTime() / 1e3), saveSettings()
+	console.log("Setting date/time to", date), settings.century = Math.floor(date.getFullYear() / 100), date.setFullYear(date.getFullYear() % 100 + 2e3), setTime(date.getTime() / 1e3), saveSettings()
 }, Pip.getDateAndTime = () =>
 {
-	let a = new Date;
-	return a.setFullYear((settings.century || 20) * 100 + a.getFullYear() % 100), a
+	let date = new Date;
+	return date.setFullYear((settings.century || 20) * 100 + date.getFullYear() % 100), date
 }, MEAS_ENB.write(0);
 try
 {
 	Pip.setDACMode("out")
 }
-catch (a)
+catch (error)
 {
-	log("setDACMode error: " + a)
+	log("setDACMode error: " + error)
 }
 Date().getFullYear() == 2e3 && setTime(new Date("2077-10-23T09:47").getTime() / 1e3), Number.prototype.twoDigit = function()
 {
