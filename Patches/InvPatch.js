@@ -47,17 +47,6 @@ let submenuItems = () =>
 	let original_removeSubmenu = null;
 	let ICNS = null;
 
-	let onKnob,
-		loadItemImage,
-		drawStatGroup,
-		renderItemStats,
-		renderFull,
-		drawDitheredRect,
-		loadMetadata,
-		loadPage,
-		getPageAndLocalIndex,
-		drawItem;
-
 	function loadItemImage(item)
 	{
 		currentItemImage = null;
@@ -83,7 +72,7 @@ let submenuItems = () =>
 		let maxValBoxWidth = 0;
 		stats.forEach(function(stat)
 		{
-			const icon = ICNS[stat.type];
+		const icon = ICNS[stat.type];
 			const statValueWidth = bC.stringWidth(stat.value);
 			let iconWidth = 0;
 			if (icon)
@@ -604,4 +593,5 @@ let submenuItems = () =>
     replace: {
         // This patch doesn't replace any regions, so this is empty.
     }
+
 };
