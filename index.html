@@ -210,9 +210,15 @@
             background: rgba(0, 255, 65, 0.03);
             transition: all 0.2s ease;
             cursor: pointer;
-            display: flex;
+            /* display: flex;
             align-items: flex-start;
-            gap: 10px;
+            gap: 10px; */
+        }
+		
+		/* Made patch item content be a block */
+        .patch-item-content {
+            /* flex: 1; */
+            cursor: pointer;
         }
 
         .patch-item:hover {
@@ -222,21 +228,19 @@
 
         .patch-item input[type="checkbox"] {
             margin-top: 2px;
+			margin-right: 10px;
             width: 18px;
             height: 18px;
             flex-shrink: 0;
             accent-color: #00ff41;
             cursor: pointer;
-        }
-
-        .patch-item-content {
-            flex: 1;
-            cursor: pointer;
+			vertical-align: middle;
         }
 
         .patch-item label {
             font-weight: bold;
-            display: block;
+            display: inline-block;
+			vertical-align: middle;
             cursor: pointer;
             text-transform: uppercase;
             letter-spacing: 1px;
@@ -246,6 +250,7 @@
         .patch-item p {
             font-size: 0.8em;
             margin: 4px 0 0 0;
+			margin-left: 28px; /* Aligns with text, not checkbox */
             opacity: 0.7;
             line-height: 1.4;
         }
@@ -335,6 +340,102 @@
             border-left: none;
             border-top: none;
         }
+
+        /* --- Tab Styles --- */
+        .tabs {
+            display: flex;
+            margin-bottom: 25px;
+            border-bottom: 2px solid #00ff41;
+        }
+        .tab-link {
+            flex: 1;
+            background: none;
+            border: none;
+            border-bottom: 3px solid transparent;
+            margin-bottom: -2px; /* Overlap the container border */
+            font-size: 1.1em;
+            padding: 10px 15px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            opacity: 0.6;
+            margin-top: 0; /* Override default button margin */
+            width: auto; /* Override default button width */
+        }
+        .tab-link:hover {
+            background: rgba(0, 255, 65, 0.1);
+            opacity: 1;
+            box-shadow: none;
+        }
+        .tab-link.active {
+            border-bottom-color: #00ff41;
+            opacity: 1;
+            animation: glow 1.5s ease-in-out infinite;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+
+        /* --- Styles for Untokenize Tab (Adapted) --- */
+        .tab-content h1 {
+            font-size: 1.5em;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(0, 255, 65, 0.5);
+            animation: none;
+            text-align: left;
+            text-shadow: none;
+            letter-spacing: 1px;
+        }
+        .controls {
+            margin-bottom: 15px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .controls button {
+            width: auto;
+            padding: 8px 12px;
+            font-size: 0.9em;
+            margin-top: 0;
+        }
+        pre {
+            background: rgba(0, 0, 0, 0.5);
+            color: #d6deeb;
+            border: 2px solid #00ff41;
+            padding: 16px;
+            overflow: auto;
+            max-height: 50vh;
+            margin: 0;
+            white-space: pre;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+        .hidden { display: none; }
+        .muted {
+            color: #00ff41;
+            opacity: 0.7;
+            font-size: 13px;
+        }
+        .patch-text-input {
+            font-family: 'Share Tech Mono', monospace;
+            background: #001a00;
+            color: #00ff41;
+            border: 1px solid #00ff41;
+            padding: 5px 8px;
+            font-size: 0.9em;
+            width: 200px;
+            margin-left: 28px;
+            margin-top: 5px;
+        }
+        .patch-text-input:focus {
+            background: rgba(0, 255, 65, 0.1);
+            outline: 1px solid #00ff41;
+        }
+
     </style>
 </head>
 <body>
@@ -352,38 +453,104 @@
         <h1>Modular Firmware Builder</h1>
         <div class="subtitle">█ Firmware Modification System █</div>
 
-        <div class="step">
-            <h3>█ Step 1: Select Base FW Version</h3>
-            <select id="fw-select">
-                <option value="">-- SELECT VERSION --</option>
-            </select>
-            <p id="fw-loading-status" style="display: none;">LOADING FILE<span class="blink">█</span></p>
+        <div class="tabs">
+            <button class="tab-link active" data-tab="patcher">Patcher</button>
+            <button class="tab-link" data-tab="untokenize">Untokenizer (DEV Use Only)</button>
         </div>
 
-        <div class="step">
-            <h3>█ Step 2: Select Patches to Apply</h3>
-            <div id="patch-list">
-                <p>LOADING PATCHES<span class="blink">█</span></p>
+        <div id="patcher" class="tab-content active">
+            <div class="step">
+                <h3>█ Step 1: Select Base FW Version</h3>
+                <select id="fw-select">
+                    <option value="">-- SELECT VERSION --</option>
+                </select>
+                <p id="fw-loading-status" style="display: none;">LOADING FILE<span class="blink">█</span></p>
             </div>
+    
+            <div class="step">
+                <h3>█ Step 2: Select Patches to Apply</h3>
+                <div id="patch-list">
+                    <p>LOADING PATCHES<span class="blink">█</span></p>
+                </div>
+            </div>
+    
+            <div class="step">
+                <h3>█ Step 3: Generate Patched File</h3>
+                <button id="patch-button" disabled>1. SELECT FW VERSION</button>
+            </div>
+    
+            <a id="download-link" href="#" download="FW.js_patched.js">
+                █ DOWNLOAD PATCHED FILE █
+            </a>
         </div>
 
-        <div class="step">
-            <h3>█ Step 3: Generate Patched File</h3>
-            <button id="patch-button" disabled>1. SELECT FW VERSION</button>
-        </div>
+        <div id="untokenize" class="tab-content">
+            <h1>JavaScript Preview</h1>
 
-        <a id="download-link" href="#" download="FW.js_patched.js">
-            █ DOWNLOAD PATCHED FILE █
-        </a>
+            <div class="controls">
+                <button id="uploadBtn" aria-pressed="false">Upload Code</button>
+                <button id="copyBtn" disabled>Copy</button>
+                <button id="saveBtn" disabled>Save...</button>
+                <div class="muted" id="status" aria-live="polite"></div>
+            </div>
+        
+            <pre><code id="codeBlock" class="language-javascript" tabindex="0" aria-label="Preformatted JavaScript code"></code></pre>
+        </div>
     </div>
 
     <script> window.Patches = {}; </script>
     <script src="Patches/patch_manifest.js"></script>
     <script src="Firmware/fw_manifest.js"></script>
     <script src="patcher.js"></script>
+
+    <script src="libs/acorn/acorn.js"></script>
+    <script src="libs/acorn/acorn_loose.js"></script>
+    <script src="libs/acorn/walk.js"></script>
+    <script src="libs/acorn/signal.js"></script>
+    <script src="libs/acorn/tern.js"></script>
+    <script src="libs/acorn/def.js"></script>
+    <script src="libs/acorn/comment.js"></script>
+    <script src="libs/acorn/infer.js"></script>
+    <script src="libs/acorn/doc_comment.js"></script>
+
+    <script src="EspruinoTools/espruino.js"></script>
+	<script src="EspruinoTools/core/utils.js"></script>
+    <script src="EspruinoTools/core/config.js"></script>
+	<script src="EspruinoTools/core/serial.js"></script>
+    <script src="EspruinoTools/core/serial_chrome_serial.js"></script>
+    <script src="EspruinoTools/core/serial_chrome_socket.js"></script>
+    <script src="EspruinoTools/core/serial_node_serial.js"></script> <script src="EspruinoTools/core/serial_web_audio.js"></script>
+    <script src="EspruinoTools/core/serial_web_bluetooth.js"></script>
+    <script src="EspruinoTools/core/serial_web_serial.js"></script>
+    <script src="EspruinoTools/core/serial_frame.js"></script>
+	<script src="EspruinoTools/libs/webrtc-connection.js"></script>       
+    <script src="EspruinoTools/core/serial_webrtc.js"></script>
+
+    <script src="EspruinoTools/core/terminal.js"></script>
+    <script src="EspruinoTools/core/codeWriter.js"></script>
+    <script src="EspruinoTools/core/modules.js"></script>
+    <script src="EspruinoTools/core/env.js"></script>
+    <script src="EspruinoTools/core/flasher.js"></script>
+    <script src="EspruinoTools/core/flasherESP8266.js"></script>
+	<script src="EspruinoTools/plugins/boardJSON.js"></script>
+    <script src="EspruinoTools/plugins/versionChecker.js"></script>
+    <script src="EspruinoTools/plugins/compiler.js"></script>
+    <script src="EspruinoTools/plugins/assembler.js"></script>
+    <script src="EspruinoTools/plugins/getGitHub.js"></script>
+    <script src="EspruinoTools/libs/utf8.js"></script> <script src="EspruinoTools/plugins/unicode.js"></script>
+
+    <script src="EspruinoTools/libs/esprima/esprima.js"></script> <script src="EspruinoTools/libs/esprima/esmangle.js"></script> <script src="EspruinoTools/libs/esprima/escodegen.js"></script> <script src="EspruinoTools/plugins/minify.js"></script>
+    <script src="EspruinoTools/plugins/pretokenise.js"></script> <script src="EspruinoTools/plugins/saveOnSend.js"></script> <script src="EspruinoTools/plugins/setTime.js"></script> <script src="untokenize.js"></script>
+
     <script>
-        // Make entire patch item clickable
+        // --- Original script from index.html ---
         document.addEventListener('click', function(e) {
+            // Updated to handle text inputs
+            if (e.target.tagName === 'INPUT' && e.target.type === 'text') {
+                e.stopPropagation(); // Stop text input clicks from toggling checkbox
+                return;
+            }
+            
             const patchItem = e.target.closest('.patch-item');
             if (patchItem && e.target.type !== 'checkbox' && e.target.tagName !== 'LABEL') {
                 const checkbox = patchItem.querySelector('input[type="checkbox"]');
@@ -394,6 +561,111 @@
                 }
             }
         });
+
+        // --- New Tab Switching Logic ---
+        const tabLinks = document.querySelectorAll('.tab-link');
+        const tabContents = document.querySelectorAll('.tab-content');
+
+        tabLinks.forEach(link => {
+            link.addEventListener('click', () => {
+                const tabId = link.dataset.tab;
+
+                // Update links
+                tabLinks.forEach(l => l.classList.remove('active'));
+                link.classList.add('active');
+
+                // Update content
+                tabContents.forEach(content => {
+                    if (content.id === tabId) {
+                        content.classList.add('active');
+                    } else {
+                        content.classList.remove('active');
+                    }
+                });
+            });
+        });
+
+        // --- Script from untokenize.html ---
+        const uploadBtn = document.getElementById('uploadBtn');
+        const copyBtn = document.getElementById('copyBtn');
+        const saveBtn = document.getElementById('saveBtn');
+        const codeBlock = document.getElementById('codeBlock');
+        const status = document.getElementById('status');
+
+        if (uploadBtn) {
+            uploadBtn.addEventListener('click', () => {
+                Espruino.Plugins.Pretokenise.testUntokenize().then(f => {
+                    if (f) {
+                        codeBlock.textContent = f;
+                        copyBtn.disabled = false;
+                        saveBtn.disabled = false;
+                        status.textContent = 'Code loaded.';
+                    } else {
+                        status.textContent = 'Failed to load code.';
+                    }
+                    setTimeout(() => { status.textContent = ''; }, 2000);
+                });
+            });
+        }
+
+        if (copyBtn) {
+            copyBtn.addEventListener('click', async () => {
+                try {
+                    await navigator.clipboard.writeText(codeBlock.textContent);
+                    status.textContent = 'Copied to clipboard.';
+                } catch (err) {
+                    status.textContent = 'Copy failed.';
+                    console.error(err);
+                }
+                setTimeout(() => { status.textContent = ''; }, 2000);
+            });
+        }
+        
+        if (saveBtn) {
+            saveBtn.addEventListener('click', async () => {
+                const text = codeBlock.textContent || '';
+                if (!text) {
+                    status.textContent = 'Nothing to save.';
+                    setTimeout(() => { status.textContent = ''; }, 1500);
+                    return;
+                }
+
+                const defaultName = 'FW_full.js';
+                try {
+                    if (window.showSaveFilePicker) {
+                        const options = {
+                            suggestedName: defaultName,
+                            types: [
+                                {
+                                    description: 'JavaScript',
+                                    accept: { 'text/javascript': ['.js'] }
+                                }
+                            ]
+                        };
+                        const handle = await window.showSaveFilePicker(options);
+                        const writable = await handle.createWritable();
+                        await writable.write(text);
+                        await writable.close();
+                    } else {
+                        // Fallback download
+                        const blob = new Blob([text], { type: 'text/javascript' });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = defaultName;
+                        document.body.appendChild(a);
+                        a.click();
+                        a.remove();
+                        URL.revokeObjectURL(url);
+                    }
+                    status.textContent = 'Saved.';
+                } catch (err) {
+                    console.error(err);
+                    status.textContent = 'Save failed.';
+                }
+                setTimeout(() => { status.textContent = ''; }, 2000);
+            });
+        }
     </script>
 </body>
 </html>
