@@ -5,5 +5,4 @@
 
 [submodule "EspruinoWebIDE"]
 	path = EspruinoTools
-	url = https://github.com/espruino/EspruinoWebIDE.git
-	branch = fc9da2fb39b8f2a13e2c21e1690ab69e0383e9af
+	url = https://github.com/espruino/EspruinoWebIDE/tree/fc9da2fb39b8f2a13e2c21e1690ab69e0383e9af
