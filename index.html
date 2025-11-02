@@ -488,7 +488,7 @@
             <h1>JavaScript Preview</h1>
 
             <div class="controls">
-                <button id="uploadBtn" aria-pressed="false">Upload Code</button>
+                <button id="untokenizeUploadBtn" aria-pressed="false">Upload Code</button>
                 <button id="copyBtn" disabled>Copy</button>
                 <button id="saveBtn" disabled>Save...</button>
                 <div class="muted" id="status" aria-live="polite"></div>
@@ -586,14 +586,14 @@
         });
 
         // --- Script from untokenize.html ---
-        const uploadBtn = document.getElementById('uploadBtn');
+        const untokenizeUploadBtn = document.getElementById('uploadBtn');
         const copyBtn = document.getElementById('copyBtn');
         const saveBtn = document.getElementById('saveBtn');
         const codeBlock = document.getElementById('codeBlock');
         const status = document.getElementById('status');
 
-        if (uploadBtn) {
-            uploadBtn.addEventListener('click', () => {
+        if (untokenizeUploadBtn) {
+            untokenizeUploadBtn.addEventListener('click', () => {
                 Espruino.Plugins.Pretokenise.testUntokenize().then(f => {
                     if (f) {
                         codeBlock.textContent = f;
