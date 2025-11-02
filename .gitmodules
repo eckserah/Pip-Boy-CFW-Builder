@@ -4,6 +4,6 @@
 	branch = Pipboy-1.29
 
 [submodule "EspruinoWebIDE"]
-	path = EspruinoTools
+	path = EspruinWebIDE
 	url = https://github.com/AidansLab/EspruinoWebIDE.git
 	branch = master
