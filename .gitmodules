@@ -1,7 +1,7 @@
 [submodule "EspruinoTools"]
 	path = EspruinoTools
 	url = https://github.com/eckserah/EspruinoTools.git
-	branch = 1.29
+	branch = Pipboy-1.29
 
 [submodule "EspruinoWebIDE"]
 	path = EspruinoWebIDE
