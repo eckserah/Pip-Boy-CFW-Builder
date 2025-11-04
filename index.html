@@ -477,11 +477,15 @@
             <div class="step">
                 <h3>█ Step 3: Generate Patched File</h3>
                 <button id="patch-button" disabled>1. SELECT FW VERSION</button>
+                <div class="download-options" style="display: flex; gap: 10px; margin-top: 20px;">
+                    <a id="download-link" href="#" download="FW.js_patched.js" style="flex: 1;">
+                        █ DOWNLOAD PATCHED FILE █
+                    </a>
+                    <button id="write-sd-button" style="flex: 1; display: none;">
+                        █ WRITE TO SD CARD █
+                    </button>
+                </div>
             </div>
-    
-            <a id="download-link" href="#" download="FW.js_patched.js">
-                █ DOWNLOAD PATCHED FILE █
-            </a>
         </div>
 
         <div id="untokenize" class="tab-content">
@@ -523,8 +527,6 @@
     <script src="EspruinoTools/core/serial_web_bluetooth.js"></script>
     <script src="EspruinoTools/core/serial_web_serial.js"></script>
     <script src="EspruinoTools/core/serial_frame.js"></script>
-	<script src="EspruinoTools/libs/webrtc-connection.js"></script>       
-    <script src="EspruinoTools/core/serial_webrtc.js"></script>
 
     <script src="EspruinoTools/core/terminal.js"></script>
     <script src="EspruinoTools/core/codeWriter.js"></script>

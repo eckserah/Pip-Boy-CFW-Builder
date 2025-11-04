@@ -36,7 +36,7 @@
 					break;
 				  default:
 					js += "\\x";
-					if (ch < 17) js += "0";
+					if (ch < 16) js += "0";
 					js += ch.toString(16).toUpperCase();
 					break;
 			  }
@@ -186,7 +186,11 @@
 			if (f) {
 				let u = Espruino.Plugins.Pretokenise.untokenize(f);
 				let m = Espruino.Plugins.Minify.unminify(u);
+				//let min = Espruino.Plugins.Minify.preminify(f);
+				//let t = Espruino.Plugins.Pretokenise.tokenise(min);
+				//return {fullcode: m, untokenized: u, retokenized: t, preminified: min};
 				return m;
+				//return {fullcode: f, retokenized: t, preminified: min};
 			}
 			return false;
 		});

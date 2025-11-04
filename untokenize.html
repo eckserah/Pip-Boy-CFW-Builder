@@ -111,11 +111,55 @@
         const saveBtn = document.getElementById('saveBtn');
         const codeBlock = document.getElementById('codeBlock');
         const status = document.getElementById('status');
-
+        Espruino.Config.PRETOKENISE = 2;
+        function stringToArrayBuffer(str) {
+            let outBuff = new ArrayBuffer(str.length);
+            let outView = new Uint8Array(outBuff);
+            for (let i = 0; i < str.length; i++) {
+                outView[i] = str.charCodeAt(i);
+            }
+            return outBuff;
+        }
+        async function saveAsFile(defaultName, text) {
+            try {
+                if (window.showSaveFilePicker) {
+                    const options = {
+                        suggestedName: defaultName,
+                        types: [
+                            {
+                                description: 'JavaScript',
+                                accept: { 'text/javascript': ['.js'] }
+                            }
+                        ]
+                    };
+                    const handle = await window.showSaveFilePicker(options);
+                    const writable = await handle.createWritable();
+                    let outBuff = stringToArrayBuffer(text);
+                    await writable.write(outBuff);
+                    await writable.close();
+                } else {
+                    // Fallback download
+                    const blob = new Blob([text], { type: 'text/javascript' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = defaultName;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    URL.revokeObjectURL(url);
+                }
+                status.textContent = 'Saved.';
+            } catch (err) {
+                console.error(err);
+                status.textContent = 'Save failed.';
+            }
+        }
         uploadBtn.addEventListener('click', () => {
             Espruino.Plugins.Pretokenise.testUntokenize().then(f => {
                 if (f) {
-                    codeBlock.textContent = f;
+                    codeBlock.textContent = f.fullcode;
+                    saveAsFile('FW_Min.JS', f.retokenized);
                     copyBtn.disabled = false;
                     saveBtn.disabled = false;
                     status.textContent = 'Code loaded.';
@@ -147,38 +191,7 @@
             }
 
             const defaultName = 'FW_full.js';
-            try {
-                if (window.showSaveFilePicker) {
-                    const options = {
-                        suggestedName: defaultName,
-                        types: [
-                            {
-                                description: 'JavaScript',
-                                accept: { 'text/javascript': ['.js'] }
-                            }
-                        ]
-                    };
-                    const handle = await window.showSaveFilePicker(options);
-                    const writable = await handle.createWritable();
-                    await writable.write(text);
-                    await writable.close();
-                } else {
-                    // Fallback download
-                    const blob = new Blob([text], { type: 'text/javascript' });
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = defaultName;
-                    document.body.appendChild(a);
-                    a.click();
-                    a.remove();
-                    URL.revokeObjectURL(url);
-                }
-                status.textContent = 'Saved.';
-            } catch (err) {
-                console.error(err);
-                status.textContent = 'Save failed.';
-            }
+            saveAsFile(defaultName, text);
             setTimeout(() => { status.textContent = ''; }, 2000);
         });
 

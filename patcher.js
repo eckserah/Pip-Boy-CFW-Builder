@@ -210,8 +210,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (selectedPatches.length === 0) {
             alert('No patches selected. Click Download to get the selected base FW file.');
-             // Allow downloading the base file if no patches selected
-             createDownloadLink(patchedContent, selectedFileName.replace('_patched.js', '.js')); // Use original name
+            // Minify the base firmware even if no patches are selected
+            let minifiedContent = patchedContent;
+            try {
+                if (window.Espruino && Espruino.Plugins && Espruino.Plugins.Minify && typeof Espruino.Plugins.Minify.preminify === 'function') {
+                    const m = Espruino.Plugins.Minify.preminify(patchedContent);
+                    if (m) minifiedContent = m;
+                }
+            } catch (e) {
+                console.warn('Minification failed or Minify plugin not available, using original content.', e);
+            }
+
+            // Allow downloading the base file if no patches selected
+            createDownloadLink(minifiedContent, selectedFileName.replace('_patched.js', '.js')); // Use original name
             return;
         }
 
@@ -364,8 +375,60 @@ document.addEventListener('DOMContentLoaded', () => {
      function createDownloadLink(content, filename) {
         console.log(`Creating download Blob for ${filename}...`);
 
-        // Create Blob using UTF-8
-        const blob = new Blob([content], { type: 'text/javascript;charset=utf-8' });
+        // Ensure Espruino config matches requested behavior:
+        // - Minification: Esprima
+        // - Module Minification: Esprima
+        // - Esprima: Mangle = true
+        // - Pretokenise: yes (2)
+        try {
+            if (window.Espruino && Espruino.Config) {
+                Espruino.Config.MINIFICATION_LEVEL = "ESPRIMA";
+                Espruino.Config.MODULE_MINIFICATION_LEVEL = "ESPRIMA";
+                Espruino.Config.MINIFICATION_Mangle = true;
+                Espruino.Config.PRETOKENISE = 2; // 'Yes (always tokenise everything)'
+                console.log('Espruino config set: MINIFICATION_LEVEL=ESPRIMA, MODULE_MINIFICATION_LEVEL=ESPRIMA, MINIFICATION_Mangle=true, PRETOKENISE=2');
+            }
+        } catch (e) {
+            console.warn('Could not set Espruino.Config defaults before minify/tokenise', e);
+        }
+
+        // Minify the content before creating the blob
+        const minifiedContent = Espruino.Plugins.Minify.preminify(content);
+        
+         // Use minified content if successful, otherwise use original
+        let finalContent = minifiedContent || content;
+
+            // If Pretokenise is available, tokenise the final content the same way
+            // EspruinoWebIDE does (use tokenise() if present and content is not
+            // already tokenised). This will make the file suitable for Espruino
+            // interpreter pretokenised uploads.
+            try {
+                if (window.Espruino && Espruino.Plugins && Espruino.Plugins.Pretokenise && typeof Espruino.Plugins.Pretokenise.tokenise === 'function') {
+                    const t = Espruino.Plugins.Pretokenise.tokenise(finalContent);
+                    if (t) {
+                        // tokenise returns the transformed code; use it
+                        finalContent = t;
+                        console.log('Pretokenise: content tokenised for download.');
+                    }
+                }
+            } catch (e) {
+                console.warn('Pretokenise failed or unavailable; proceeding with original content.', e);
+            }
+
+            // Convert finalContent to ANSI (single-byte) bytes and create a Blob from those bytes.
+            // We map each JS 16-bit code unit to a single byte by taking the low 8 bits.
+            // This matches Espruino's expectation for pretokenised binary-like files.
+            try {
+                const buf = new Uint8Array(finalContent.length);
+                for (let i = 0; i < finalContent.length; i++) {
+                    const code = finalContent.charCodeAt(i);
+                    buf[i] = code & 0xFF; // ANSI single-byte mapping
+                }
+                var blob = new Blob([buf], { type: 'text/javascript' });
+            } catch (e) {
+                console.warn('Failed to create ANSI blob, falling back to UTF-8 blob', e);
+                var blob = new Blob([finalContent], { type: 'text/javascript;charset=utf-8' });
+            }
         const url = URL.createObjectURL(blob);
 
         downloadLink.href = url;
